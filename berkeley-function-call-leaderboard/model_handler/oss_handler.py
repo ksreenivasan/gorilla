@@ -49,10 +49,12 @@ class OSSHandler(BaseHandler):
         for line in question_jsons:
             ques_json = line
             prompt = augment_prompt_by_languge(ques_json["question"], test_category)
+            functions = ques_json["function"]
+            functions = [functions] if isinstance(ques_json["function"], dict) or isinstance(ques_json["function"], str) else functions
             functions = language_specific_pre_processing(
-                ques_json["function"], test_category, False
+                functions, test_category, False
             )
-            prompts.append(format_prompt_func(prompt, functions, test_category))
+            prompts.append(format_prompt_func(prompt, functions))
             ans_id = shortuuid.uuid()
             ans_jsons.append(
                 {
