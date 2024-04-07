@@ -9,6 +9,16 @@ dist
 .editorconfig
 .DS_Store
 **/*.pyc
+
+# Ignore API keys
 ./berkeley-function-call-leaderboard/function_credential_config.json
+
+# Ignore tree-sitter
 ./berkeley-function-call-leaderboard/eval_checker/tree-sitter-java
 ./berkeley-function-call-leaderboard/eval_checker/tree-sitter-javascript
+./berkeley-function-call-leaderboard/tree-sitter-java
+./berkeley-function-call-leaderboard/tree-sitter-javascript
+
+# Ignore eval Berkeley Function Calling Leaderboard dataset
+./berkeley-function-call-leaderboard/data/.gitattributes
+./berkeley-function-call-leaderboard/data/gorilla_openfunctions_v1_test_chatable.json
