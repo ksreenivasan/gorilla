@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from model_handler.gorilla_handler import GorillaHandler
 from model_handler.gpt_handler import OpenAIHandler
 from model_handler.claude_handler import ClaudeHandler
@@ -12,7 +14,14 @@ from model_handler.deepseek_handler import DeepseekHandler
 from model_handler.functionary_handler import FunctionaryHandler
 from model_handler.databricks_handler import DatabricksHandler
 
-handler_map = {
+def oss_handler_wrapper():
+    """defaultdict does not accept parameters and cannot be initialized to a class such
+    as OSSHandler which requires parameters. So we use this wrapper."""
+    return OSSHandler
+
+handler_map = defaultdict(oss_handler_wrapper)
+
+handler_map.update({
     "gorilla-openfunctions-v0": GorillaHandler,
     "gorilla-openfunctions-v2": GorillaHandler,
     "gpt-4-1106-preview-FC": OpenAIHandler,
@@ -50,4 +59,4 @@ handler_map = {
     "meetkai/functionary-small-v2.4-FC": FunctionaryHandler,
     "meetkai/functionary-medium-v2.4-FC": FunctionaryHandler,
     "databricks-dbrx-instruct": DatabricksHandler,
-}
+})
