@@ -44,7 +44,7 @@ def load_file(test_category):
     if args.test_category == "all":
         test_cate,files_to_open = list(test_categories.keys()),list(test_categories.values())
     else:
-        test_cate,files_to_open = [args.test_category], [test_categories[args.test_category]]   
+        test_cate,files_to_open = [args.test_category], [test_categories[args.test_category]]
     return test_cate,files_to_open
 
 if __name__ == "__main__":
@@ -52,7 +52,7 @@ if __name__ == "__main__":
     model = args.model
     handler = build_handler(args.model)
     if handler.model_style == ModelStyle.OSSMODEL:
-       result = handler.inference(question_file="eval_data_total.json",test_categories=args.test_categories,num_gpus=args.num_gpus)
+       result = handler.inference(question_file="eval_data_total.json",test_category=args.test_category,num_gpus=args.num_gpus)
        for res in result[0]:
            handler.write(res, "result.json")
     else:
@@ -62,7 +62,7 @@ if __name__ == "__main__":
             test_cases = []
             with open("./data/" + file_to_open) as f:
                 for line in f:
-                    test_cases.append(json.loads(line))     
+                    test_cases.append(json.loads(line))
             num_existing_result = 0  # if the result file already exists, skip the test cases that have been tested.
             if os.path.exists("./result/" + args.model + "/" + file_to_open.replace(".json", "_result.json")):
                 with open("./result/"+ args.model+ "/"+ file_to_open.replace(".json", "_result.json")) as f:
