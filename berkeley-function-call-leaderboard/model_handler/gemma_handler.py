@@ -22,10 +22,10 @@ class GemmaHandler(OSSHandler):
         return formatted_prompt.format(function=function, prompt=prompt)
 
     def inference(
-        self, question_file, test_category, num_gpus, fromat_prompt_func=_format_prompt
+        self, question_file, test_category, num_gpus, format_prompt_func=_format_prompt
     ):
         return super().inference(
-            question_file, test_category, num_gpus, fromat_prompt_func
+            question_file, test_category, num_gpus, format_prompt_func
         )
 
     def decode_ast(self, result, language="Python"):
