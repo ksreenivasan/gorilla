@@ -9,8 +9,55 @@ from model_handler.utils import (
     augment_prompt_by_languge,
     language_specific_pre_processing,
 )
-from tqdm import tqdm
 import shortuuid, ray, os, json, torch
+
+
+# Define the `_batch_generate` function outside of the class because `ray.remote` decorator
+# only works on functions or entire classes, not on a single method within a class
+# More info here: https://stackoverflow.com/a/64324432/14773537
+@ray.remote(num_gpus=1)
+@torch.inference_mode()
+def _batch_generate(
+    question_jsons: List[Dict],
+    test_category: str,
+    model_path: Union[str, Path],
+    temperature: float,
+    max_tokens: int,
+    top_p: float,
+    format_prompt_func: callable,
+):
+    from vllm import LLM, SamplingParams
+
+    prompts = []
+    ans_jsons = []
+    for line in question_jsons:
+        ques_json = line
+        question, functions = ques_json["question"], ques_json["function"]
+        if not isinstance(functions, list):
+            functions = [functions]
+        functions = language_specific_pre_processing(functions, test_category, False)
+        prompt = augment_prompt_by_languge(question, test_category)
+        prompts.append(format_prompt_func(prompt, functions))
+        ans_id = shortuuid.uuid()
+        ans_jsons.append(
+            {
+                "answer_id": ans_id,
+                "question": question,
+            }
+        )
+
+    print("start generating: ", len(prompts))
+    sampling_params = SamplingParams(
+        temperature=temperature, max_tokens=max_tokens, top_p=top_p
+    )
+    llm = LLM(model=model_path, dtype="float16", trust_remote_code=True)
+    outputs = llm.generate(prompts, sampling_params)
+    final_ans_jsons = []
+    for output, ans_json in zip(outputs, ans_jsons):
+        text = output.outputs[0].text
+        ans_json["text"] = text
+        final_ans_jsons.append(ans_json)
+    return final_ans_jsons
 
 
 class OSSHandler(BaseHandler):
@@ -34,51 +81,6 @@ class OSSHandler(BaseHandler):
             functions += "\n" + str(function)
         return f"SYSTEM: {SYSTEM_PROMPT}\n{functions}\nUSER: {prompt}\nASSISTANT: "
 
-    # @ray.remote(num_gpus=1)
-    # @torch.inference_mode()
-    def _batch_generate(
-        self,
-        question_jsons: List[Dict],
-        test_category: str,
-        model_path: Union[str, Path],
-        temperature: float,
-        max_tokens: int,
-        top_p: float,
-        format_prompt_func: callable,
-    ):
-        from vllm import LLM, SamplingParams
-
-        prompts = []
-        ans_jsons = []
-        for line in question_jsons:
-            ques_json = line
-            question, functions = ques_json["question"], ques_json["function"]
-            if not isinstance(functions, list):
-                functions = [functions]
-            functions = language_specific_pre_processing(functions, test_category, False)
-            prompt = augment_prompt_by_languge(question, test_category)
-            prompts.append(format_prompt_func(prompt, functions))
-            ans_id = shortuuid.uuid()
-            ans_jsons.append(
-                {
-                    "answer_id": ans_id,
-                    "question": question,
-                }
-            )
-
-        print("start generating: ", len(prompts))
-        sampling_params = SamplingParams(
-            temperature=temperature, max_tokens=max_tokens, top_p=top_p
-        )
-        llm = LLM(model=model_path, dtype="float16", trust_remote_code=True)
-        outputs = llm.generate(prompts, sampling_params)
-        final_ans_jsons = []
-        for output, ans_json in zip(outputs, ans_jsons):
-            text = output.outputs[0].text
-            ans_json["text"] = text
-            final_ans_jsons.append(ans_json)
-        return final_ans_jsons
-
     def inference(
         self, question_file, test_category, num_gpus, format_prompt_func=_format_prompt
     ):
@@ -89,35 +91,22 @@ class OSSHandler(BaseHandler):
                 ques_jsons.append(json.loads(line))
 
         chunk_size = len(ques_jsons) // num_gpus
-        # ans_handles = []
-        # for i in range(0, len(ques_jsons), chunk_size):
-        #     ans_handles.append(
-        #         self._batch_generate.remote(
-        #             ques_jsons[i : i + chunk_size],
-        #             test_category,
-        #             self.model_name,
-        #             self.temperature,
-        #             self.max_tokens,
-        #             self.top_p,
-        #             format_prompt_func,
-        #         )
-        #     )
-        # ans_jsons = []
-        # for ans_handle in ans_handles:
-        #     ans_jsons.extend(ray.get(ans_handle))
-        ans_jsons = []
+        ans_handles = []
         for i in range(0, len(ques_jsons), chunk_size):
-            _ques_jsons = ques_jsons[i : i + chunk_size]
-            ans_json = self._batch_generate(
-                _ques_jsons,
-                test_category,
-                self.model_name,
-                self.temperature,
-                self.max_tokens,
-                self.top_p,
-                format_prompt_func,
+            ans_handles.append(
+                _batch_generate.remote(
+                    ques_jsons[i : i + chunk_size],
+                    test_category,
+                    self.model_name,
+                    self.temperature,
+                    self.max_tokens,
+                    self.top_p,
+                    format_prompt_func,
+                )
             )
-            ans_jsons.append(ans_json)
+        ans_jsons = []
+        for ans_handle in ans_handles:
+            ans_jsons.extend(ray.get(ans_handle))
 
         return ans_jsons, {"input_tokens": 0, "output_tokens": 0, "latency": 0}
 
