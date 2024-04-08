@@ -49,15 +49,11 @@ class AccelerateHandler(BaseHandler):
         # padding_side="right",
         return tokenizer
 
-    def __init__(self, model_id, temperature=0.7, top_p=1, max_tokens=1000, do_inference=True) -> None:
+    def __init__(self, model_id, temperature=0.7, top_p=1, max_tokens=1000) -> None:
         self.model_id = model_id
-        self.do_inference = do_inference
         model_name = self.get_model_name(model_id)
         super().__init__(model_name, temperature, top_p, max_tokens)
         self.model_style = ModelStyle.Accelerate
-        if self.do_inference:
-            self.model = self._init_model()
-            self.tokenizer = self._init_tokenizer()
 
     def _format_prompt_func(self, prompt, function):
         user_prompt = USER_PROMPT_FOR_CHAT_MODEL.format(
@@ -104,6 +100,12 @@ class AccelerateHandler(BaseHandler):
         return inputs
 
     def inference(self, prompt, functions, test_category):
+
+        # Only initialize model and tokenizer once
+        if self.model is None and self.tokenizer is None:
+            self.model = self._init_model()
+            self.tokenizer = self._init_tokenizer()
+
         start = time.time()
 
         # Format the prompt with the functions the model has access to
