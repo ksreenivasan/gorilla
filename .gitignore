@@ -42,3 +42,6 @@ berkeley-function-call-leaderboard/data/README.md
 
 # Ignore inference results
 berkeley-function-call-leaderboard/result/
+
+# Ignore leaderboard score
+berkeley-function-call-leaderboard/score/
