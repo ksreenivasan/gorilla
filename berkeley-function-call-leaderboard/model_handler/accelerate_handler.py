@@ -31,6 +31,12 @@ class AccelerateHandler(BaseHandler):
         # Assume this is a HF model where the model name is after the last "/"
         return model_id.split("/")[-1]
 
+    def __init__(self, model_id, temperature=0.7, top_p=1, max_tokens=1000) -> None:
+        self.model_id = model_id
+        model_name = self.get_model_name(model_id)
+        super().__init__(model_name, temperature, top_p, max_tokens)
+        self.model_style = ModelStyle.Accelerate
+
     def _init_model(self):
         """From https://huggingface.co/docs/accelerate/usage_guides/big_modeling#complete-example"""
         # checkpoint_dir = "./checkpoints/"
@@ -48,12 +54,6 @@ class AccelerateHandler(BaseHandler):
         # truncation_side="left",
         # padding_side="right",
         return tokenizer
-
-    def __init__(self, model_id, temperature=0.7, top_p=1, max_tokens=1000) -> None:
-        self.model_id = model_id
-        model_name = self.get_model_name(model_id)
-        super().__init__(model_name, temperature, top_p, max_tokens)
-        self.model_style = ModelStyle.Accelerate
 
     def _format_prompt_func(self, prompt, function):
         user_prompt = USER_PROMPT_FOR_CHAT_MODEL.format(
@@ -136,4 +136,24 @@ class AccelerateHandler(BaseHandler):
         return output_texts, metadata
 
     def decode_execute(self, result):
-        return result
+
+        # Parse result
+        func = result.replace('", "', ",").replace('["', "[").replace('"]', "]")
+        if " " == func[0]:
+            func = func[1:]
+        if not func.startswith("["):
+            func = "[" + func
+        if not func.endswith("]"):
+            func = func + "]"
+
+        # Parse AST of func
+        decode_output = ast_parse(func)
+
+        # Create execution list
+        execution_list = []
+        for function_call in decode_output:
+            for key, value in function_call.items():
+                execution_list.append(
+                    f"{key}({','.join([f'{k}={repr(v)}' for k, v in value.items()])})"
+                )
+        return execution_list
