@@ -26,7 +26,7 @@ def initialize_placeholders():
     # If we got the API keys from environment variables, let's update
     # function_credential_config.json file with these new API keys
     with open("function_credential_config.json", "w") as f:
-        function_credential_config = json.dump(placeholders, f)
+        function_credential_config = json.dump([placeholders], f)
 
     return placeholders
 
