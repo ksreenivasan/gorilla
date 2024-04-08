@@ -13,13 +13,17 @@ from model_handler.glaive_handler import GlaiveHandler
 from model_handler.deepseek_handler import DeepseekHandler
 from model_handler.functionary_handler import FunctionaryHandler
 from model_handler.databricks_handler import DatabricksHandler
+from model_handler.accelerate_handler import AccelerateHandler
 
-def oss_handler_wrapper():
-    """defaultdict does not accept parameters and cannot be initialized to a class such
-    as OSSHandler which requires parameters. So we use this wrapper."""
-    return OSSHandler
+def default_handler_wrapper():
+    """The default value of a defaultdict cannot accept parameters (this is
+    a feature of Python). So we are unable to make to a Handler class, which
+    requires parameters during initialization, the default value of a
+    defaultdict. So we use this wrapper, which requires no parameters to get
+    around this."""
+    return AccelerateHandler
 
-handler_map = defaultdict(oss_handler_wrapper)
+handler_map = defaultdict(default_handler_wrapper)
 
 handler_map.update({
     "gorilla-openfunctions-v0": GorillaHandler,
