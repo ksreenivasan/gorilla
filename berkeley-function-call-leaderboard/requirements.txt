@@ -1,9 +1,10 @@
 requests
 tqdm
 tree_sitter
-torch 
+torch
 ray
 shortuuid
 mistralai
 anthropic
 openai
+flash-attn
