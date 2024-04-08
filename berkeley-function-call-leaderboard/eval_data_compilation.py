@@ -5,14 +5,16 @@ data = []
     Compile evaluation data into a single file
 """
 
+# we do not currently evaluate sql, chatable in our evals
+# see https://github.com/ShishirPatil/gorilla/blob/c6221060a9d50d0c7e7705f1ac95b9e5c4a95252/berkeley-function-call-leaderboard/eval_checker/eval_runner.py#L304
 test_files = [
     "executable_parallel_function",
     "parallel_multiple_function",
     "executable_simple",
     "rest",
-    "sql",
+    # "sql",
     "parallel_function",
-    "chatable",
+    # "chatable",
     "java",
     "javascript",
     "executable_multiple_function",
