@@ -1,5 +1,11 @@
-from typing import List, Dict, Union
+import json
 from pathlib import Path
+import os
+import shortuuid
+from typing import List, Dict, Union
+
+import ray
+import torch
 
 from model_handler.handler import BaseHandler
 from model_handler.model_style import ModelStyle
@@ -9,13 +15,13 @@ from model_handler.utils import (
     augment_prompt_by_languge,
     language_specific_pre_processing,
 )
-import shortuuid, ray, os, json, torch
 
+NUM_GPUS = torch.cuda.device_count()
 
 # Define the `_batch_generate` function outside of the class because `ray.remote` decorator
 # only works on functions or entire classes, not on a single method within a class
 # More info here: https://stackoverflow.com/a/64324432/14773537
-@ray.remote(num_gpus=1)
+@ray.remote(num_gpus=NUM_GPUS)
 @torch.inference_mode()
 def _batch_generate(
     question_jsons: List[Dict],
@@ -50,7 +56,7 @@ def _batch_generate(
     sampling_params = SamplingParams(
         temperature=temperature, max_tokens=max_tokens, top_p=top_p
     )
-    llm = LLM(model=model_path, dtype="float16", trust_remote_code=True)
+    llm = LLM(model=model_path, dtype="float16", trust_remote_code=True, tensor_parallel_size=NUM_GPUS)
     outputs = llm.generate(prompts, sampling_params)
     final_ans_jsons = []
     for output, ans_json in zip(outputs, ans_jsons):
@@ -85,6 +91,7 @@ class OSSHandler(BaseHandler):
         self, question_file, test_category, num_gpus, format_prompt_func=_format_prompt
     ):
 
+        print(f"Perform inference with {NUM_GPUS} GPUs.")
         ques_jsons = []
         with open(question_file, "r") as ques_file:
             for line in ques_file:
