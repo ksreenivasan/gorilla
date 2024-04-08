@@ -75,7 +75,8 @@ MODEL_ID_DICT = {
 
 MODEL_ID_TO_NAME = {
     "EleutherAI/pythia-70m": "pythia-70m",
-    "mistralai/Mistral-7B-Instruct-v0.1": "mistral-7b-instruct",
+    "mistralai/Mistral-7B-Instruct-v0.1": "mistral-7b-instruct-v1",
+    "mistralai/Mistral-7B-Instruct-v0.2": "mistral-7b-instruct-v2",
 }
 
 JAVA_TYPE_CONVERSION = {
