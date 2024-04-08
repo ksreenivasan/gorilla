@@ -17,10 +17,10 @@ def initialize_placeholders():
     # First, check if API keys are in environment variables
     # If they don't exist, then check if they are in the `function_credential_config` json
     placeholders = {
-        "YOUR-GEOCODE-API-KEY": os.environ.get("GEOCODE-API-KEY", function_credential_config[3]["GEOCODE-API-KEY"]),
-        "YOUR-RAPID-API-KEY": os.environ.get("RAPID-API-KEY", function_credential_config[0]["RAPID-API-KEY"]),
-        "YOUR-OMDB-API-KEY": os.environ.get("OMDB-API-KEY", function_credential_config[2]["OMDB-API-KEY"]),
-        "YOUR-EXCHANGERATE-API-KEY": os.environ.get("EXCHANGERATE-API-KEY", function_credential_config[1]["EXCHANGERATE-API-KEY"]),
+        "YOUR-GEOCODE-API-KEY": os.environ.get("GEOCODE_API_KEY", function_credential_config[3]["GEOCODE-API-KEY"]),
+        "YOUR-RAPID-API-KEY": os.environ.get("RAPID_API_KEY", function_credential_config[0]["RAPID-API-KEY"]),
+        "YOUR-OMDB-API-KEY": os.environ.get("OMDB_API_KEY", function_credential_config[2]["OMDB-API-KEY"]),
+        "YOUR-EXCHANGERATE-API-KEY": os.environ.get("EXCHANGERATE_API_KEY", function_credential_config[1]["EXCHANGERATE-API-KEY"]),
     }
     return placeholders
 
@@ -32,7 +32,7 @@ def replace_placeholders(data, placeholders):
     if isinstance(data, dict):
         for key, value in data.items():
             if isinstance(value, (dict, list)):
-                replace_placeholders(value)
+                replace_placeholders(value, placeholders)
             elif isinstance(value, str):
                 for placeholder, actual_value in placeholders.items():
                     if placeholder in value:  # Check if placeholder is in the string
@@ -62,7 +62,7 @@ def main():
         for line in lines:
             try:
                 data = json.loads(line)  # Parse each line as a JSON object
-                data = replace_placeholders(data)  # Replace placeholders
+                data = replace_placeholders(data, placeholders)  # Replace placeholders
                 modified_data.append(json.dumps(data))  # Convert back to string and store
             except json.JSONDecodeError:
                 # Handle the case where a line is not a valid JSON object
