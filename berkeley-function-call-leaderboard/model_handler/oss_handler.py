@@ -56,7 +56,12 @@ def _batch_generate(
     sampling_params = SamplingParams(
         temperature=temperature, max_tokens=max_tokens, top_p=top_p
     )
-    llm = LLM(model=model_path, dtype="float16", trust_remote_code=True, tensor_parallel_size=NUM_GPUS)
+    llm = LLM(
+        model=model_path,
+        dtype="float16",
+        trust_remote_code=True,
+        tensor_parallel_size=NUM_GPUS
+        )
     outputs = llm.generate(prompts, sampling_params)
     final_ans_jsons = []
     for output, ans_json in zip(outputs, ans_jsons):
@@ -73,6 +78,7 @@ class OSSHandler(BaseHandler):
         self._init_model()
 
     def _init_model(self):
+        # num_cpus = min(os.cpu_count(), 8)
         ray.init(ignore_reinit_error=True, num_cpus=8)
 
     def _format_prompt(prompt, function):
