@@ -7,4 +7,8 @@ shortuuid
 mistralai
 anthropic
 openai
-flash-attn
+
+# install these packages so vllm can use flash attention and run faster
+# wheel
+# setuptool
+# flash-attn
