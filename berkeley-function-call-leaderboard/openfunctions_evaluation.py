@@ -52,9 +52,9 @@ if __name__ == "__main__":
     model = args.model
     handler = build_handler(args.model)
     if handler.model_style == ModelStyle.OSSMODEL:
-       result = handler.inference(question_file="eval_data_total.json",test_category=args.test_category,num_gpus=args.num_gpus)
-       for res in result[0]:
-           handler.write(res, "result.json")
+        result = handler.inference(question_file="eval_data_total.json",test_category=args.test_category,num_gpus=args.num_gpus)
+        for res in result[0]:
+            handler.write(res, "result.json")
     else:
         test_cate, files_to_open = load_file(args.test_category)
         for test_category, file_to_open in zip(test_cate,files_to_open):
