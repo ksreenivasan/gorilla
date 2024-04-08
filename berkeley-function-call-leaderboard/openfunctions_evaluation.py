@@ -74,7 +74,7 @@ if __name__ == "__main__":
                 user_question,functions = test_case["question"], test_case["function"]
                 if type(functions) is dict or type(functions) is str:
                     functions = [functions]
-                result,metadata = handler.inference(user_question, functions,test_category)
+                result,metadata = handler.inference(user_question, functions, test_category)
                 result_to_write = {
                     "idx": index,
                     "result": result,
