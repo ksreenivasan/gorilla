@@ -3,7 +3,7 @@ import json
 import time
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from huggingface_hub import hf_hub_download
+from huggingface_hub import snapshot_download
 from accelerate import init_empty_weights, load_checkpoint_and_dispatch
 import torch
 
@@ -33,23 +33,23 @@ class AccelerateHandler(BaseHandler):
 
     def _init_model(self):
         """From https://huggingface.co/docs/accelerate/usage_guides/big_modeling#complete-example"""
-        weights_location = hf_hub_download(self.model_id, "pytorch_model.bin", token=True)
-        with init_empty_weights():
-            model = AutoModelForCausalLM.from_pretrained(self.model_id, trust_remote_code=True, use_auth_token=True)
-        model = load_checkpoint_and_dispatch(model, checkpoint=weights_location, device_map="auto")
+        # checkpoint_dir = "./checkpoints/"
+        # weights_location = snapshot_download(repo_id=self.model_id, local_dir=checkpoint_dir, token=True)
+        # with init_empty_weights():
+        #     model = AutoModelForCausalLM.from_pretrained(self.model_id, trust_remote_code=True, use_auth_token=True)
+        # model = load_checkpoint_and_dispatch(model, checkpoint=checkpoint_dir, device_map="auto")
+        model = AutoModelForCausalLM.from_pretrained(
+            self.model_id, device_map="auto", trust_remote_code=True,token=True
+            )
         return model
 
     def _init_tokenizer(self):
-        tokenizer = AutoTokenizer.from_pretrained(
-                self.model_id,
-                trust_remote_code=True,
-                use_auth_token=True,
-                truncation_side="left",
-                # padding_side="right",
-            )
+        tokenizer = AutoTokenizer.from_pretrained(self.model_id, trust_remote_code=True, token=True)
+        # truncation_side="left",
+        # padding_side="right",
         return tokenizer
 
-    def __init__(self, model_id, temperature=0.7, top_p=1, max_tokens=1000, do_inference=False) -> None:
+    def __init__(self, model_id, temperature=0.7, top_p=1, max_tokens=1000, do_inference=True) -> None:
         self.model_id = model_id
         self.do_inference = do_inference
         model_name = self.get_model_name(model_id)
@@ -88,7 +88,7 @@ class AccelerateHandler(BaseHandler):
                 return_tensors="pt", return_dict=True)
         elif template == "chat" or (hasattr(self.tokenizer, "apply_chat_template") and template is None):
             messages = [
-                {"role": "system", "content": system_prompt},
+                # {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
                 ]
             inputs = self.tokenizer.apply_chat_template(
@@ -111,27 +111,27 @@ class AccelerateHandler(BaseHandler):
         prompt = augment_prompt_by_languge(prompt, test_category)
         user_prompt, system_prompt = self._format_prompt_func(prompt, functions)
 
-        # Tokenize
+        # Tokenize text
         input_tokens = self.tokenizer_encode(user_prompt, system_prompt)
+        n_input_tokens = input_tokens["input_ids"].shape[1]
 
-        # Generate
-        outputs = self.model.generate(**input_tokens, pad_token_id=self.tokenizer.eos_token_id, max_new_tokens=200)
+        # Generate text
+        input_and_output_tokens = self.model.generate(**input_tokens, pad_token_id=self.tokenizer.eos_token_id, max_new_tokens=200)
+        output_tokens = input_and_output_tokens[0][n_input_tokens:]
+        n_output_tokens = len(output_tokens)
 
-        # Decode
-        output_texts = self.tokenizer.decode(outputs[0])
-
-        # Process output
-        input_texts = self.tokenizer_encode(user_prompt, system_prompt, tokenize=False)
-        result = output_texts[len(input_texts):]
+        # Decode text
+        output_texts = self.tokenizer.decode(output_tokens, skip_special_tokens=True)
+        # assert len(self.tokenizer(output_texts, add_special_tokens=False)["input_ids"]) == n_output_tokens
 
         # Record info
         latency = time.time() - start
         metadata = {
-            "input_tokens": input_texts,
-            "output_tokens": result,
+            "input_tokens": n_input_tokens,
+            "output_tokens": n_output_tokens,
             "latency": latency
             }
-        return result, metadata
+        return output_texts, metadata
 
     def decode_execute(self, result):
         return result
