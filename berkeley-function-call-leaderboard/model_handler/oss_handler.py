@@ -72,9 +72,10 @@ def _batch_generate(
 
 
 class OSSHandler(BaseHandler):
-    def __init__(self, model_name, temperature=0.7, top_p=1, max_tokens=1000) -> None:
+    def __init__(self, model_name, temperature=0.7, top_p=1, max_tokens=1000, seed=0) -> None:
         super().__init__(model_name, temperature, top_p, max_tokens)
         self.model_style = ModelStyle.OSSMODEL
+        self.seed = seed
         self._init_model()
 
     def _init_model(self):
