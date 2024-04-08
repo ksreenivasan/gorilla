@@ -46,7 +46,7 @@ def _batch_generate(
             }
         )
 
-    print("start generating: ", len(prompts))
+    print(f"start generating: {len(prompts)} prompts...")
     sampling_params = SamplingParams(
         temperature=temperature, max_tokens=max_tokens, top_p=top_p
     )
