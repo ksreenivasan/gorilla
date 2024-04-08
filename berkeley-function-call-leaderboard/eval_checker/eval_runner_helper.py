@@ -638,14 +638,16 @@ def generate_leaderboard_csv(leaderboard_table, output_path):
                 f"Warning: Total count for {model_name} is {overall_accuracy['total_count']}"
             )
 
+        model_metadata = get_model_metadata(model_name)
+
         data.append(
             [
                 "N/A",
                 overall_accuracy["accuracy"],
-                MODEL_METADATA_MAPPING[model_name][0],
-                MODEL_METADATA_MAPPING[model_name][1],
-                MODEL_METADATA_MAPPING[model_name][2],
-                MODEL_METADATA_MAPPING[model_name][3],
+                model_metadata[0],
+                model_metadata[1],
+                model_metadata[2],
+                model_metadata[3],
                 summary_ast["accuracy"],
                 summary_exec["accuracy"],
                 simple_ast["accuracy"],
@@ -755,3 +757,16 @@ def collapse_json_objects(file_path):
             json_obj = json.loads(obj)
             compact_json = json.dumps(json_obj, separators=(",", ":"))
             out_file.write(compact_json + "\n")
+
+
+def get_model_metadata(model_name):
+    if model_name in MODEL_METADATA_MAPPING:
+        return MODEL_METADATA_MAPPING[model_name]
+    # Assume model is from HF
+    if "/" in model_name:
+        organization = model_name.split("/")[-1]
+    elif "_" in model_name:
+        organization = model_name.split("_")[-1]
+    else:
+        organization = model_name
+    return [model_name, f"https://huggingface.co/{model_name}", organization, "Please check license."]
