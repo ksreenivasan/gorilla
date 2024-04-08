@@ -1,3 +1,6 @@
+from typing import List, Dict, Union
+from pathlib import Path
+
 from model_handler.handler import BaseHandler
 from model_handler.model_style import ModelStyle
 from model_handler.constant import MODEL_ID_DICT
@@ -31,16 +34,17 @@ class OSSHandler(BaseHandler):
             functions += "\n" + str(function)
         return f"SYSTEM: {SYSTEM_PROMPT}\n{functions}\nUSER: {prompt}\nASSISTANT: "
 
-    @ray.remote(num_gpus=1)
-    @torch.inference_mode()
+    # @ray.remote(num_gpus=1)
+    # @torch.inference_mode()
     def _batch_generate(
-        question_jsons,
-        test_category,
-        model_path,
-        temperature,
-        max_tokens,
-        top_p,
-        format_prompt_func,
+        self,
+        question_jsons: List[Dict],
+        test_category: str,
+        model_path: Union[str, Path],
+        temperature: float,
+        max_tokens: int,
+        top_p: float,
+        format_prompt_func: callable,
     ):
         from vllm import LLM, SamplingParams
 
@@ -48,18 +52,17 @@ class OSSHandler(BaseHandler):
         ans_jsons = []
         for line in question_jsons:
             ques_json = line
-            prompt = augment_prompt_by_languge(ques_json["question"], test_category)
-            functions = ques_json["function"]
-            functions = [functions] if isinstance(ques_json["function"], dict) or isinstance(ques_json["function"], str) else functions
-            functions = language_specific_pre_processing(
-                functions, test_category, False
-            )
+            question, functions = ques_json["question"], ques_json["function"]
+            if not isinstance(functions, list):
+                functions = [functions]
+            functions = language_specific_pre_processing(functions, test_category, False)
+            prompt = augment_prompt_by_languge(question, test_category)
             prompts.append(format_prompt_func(prompt, functions))
             ans_id = shortuuid.uuid()
             ans_jsons.append(
                 {
                     "answer_id": ans_id,
-                    "question": ques_json["question"],
+                    "question": question,
                 }
             )
 
@@ -86,22 +89,35 @@ class OSSHandler(BaseHandler):
                 ques_jsons.append(json.loads(line))
 
         chunk_size = len(ques_jsons) // num_gpus
-        ans_handles = []
-        for i in range(0, len(ques_jsons), chunk_size):
-            ans_handles.append(
-                self._batch_generate.remote(
-                    ques_jsons[i : i + chunk_size],
-                    test_category,
-                    self.model_name,
-                    self.temperature,
-                    self.max_tokens,
-                    self.top_p,
-                    format_prompt_func,
-                )
-            )
+        # ans_handles = []
+        # for i in range(0, len(ques_jsons), chunk_size):
+        #     ans_handles.append(
+        #         self._batch_generate.remote(
+        #             ques_jsons[i : i + chunk_size],
+        #             test_category,
+        #             self.model_name,
+        #             self.temperature,
+        #             self.max_tokens,
+        #             self.top_p,
+        #             format_prompt_func,
+        #         )
+        #     )
+        # ans_jsons = []
+        # for ans_handle in ans_handles:
+        #     ans_jsons.extend(ray.get(ans_handle))
         ans_jsons = []
-        for ans_handle in ans_handles:
-            ans_jsons.extend(ray.get(ans_handle))
+        for i in range(0, len(ques_jsons), chunk_size):
+            _ques_jsons = ques_jsons[i : i + chunk_size]
+            ans_json = self._batch_generate(
+                _ques_jsons,
+                test_category,
+                self.model_name,
+                self.temperature,
+                self.max_tokens,
+                self.top_p,
+                format_prompt_func,
+            )
+            ans_jsons.append(ans_json)
 
         return ans_jsons, {"input_tokens": 0, "output_tokens": 0, "latency": 0}
 
