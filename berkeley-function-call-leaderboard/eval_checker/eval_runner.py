@@ -3,6 +3,7 @@ import sys
 sys.path.append("../")
 
 from checker import ast_checker, executable_checker, executable_checker_rest
+from model_handler.constant import MODEL_ID_TO_NAME
 from eval_runner_helper import *
 from tqdm import tqdm
 import argparse
@@ -259,6 +260,10 @@ def single_ast_file_runner(
 
 #### Main runner function ####
 def runner(model_names, test_categories):
+    # Create output directory
+    if not os.path.exists(OUTPUT_PATH):
+        os.makedirs(OUTPUT_PATH, exist_ok=True)
+
     # Get a list of all entries in the folder
     entries = os.scandir(INPUT_PATH)
 
@@ -278,7 +283,7 @@ def runner(model_names, test_categories):
             f
             for f in os.listdir(subdir)
             if os.path.isfile(os.path.join(subdir, f)) and not f.startswith(".")
-        ]  
+        ]
         # Check if there is only one file and that file is 'result.json'
         # If so, this is an OSS model result file and we need to special process it first
         if len(files) == 1 and files[0] == "result.json":
@@ -452,5 +457,8 @@ if __name__ == "__main__":
                 test_categories.extend(ARG_PARSE_MAPPING[test_category])
             else:
                 test_categories.append(test_category)
+
+    # map the id of a model to its name
+    model_names = [MODEL_ID_TO_NAME.get(model_name, model_name) for model_name in model_names]
 
     runner(model_names, test_categories)
