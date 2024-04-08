@@ -34,8 +34,10 @@ class AccelerateHandler(BaseHandler):
     def __init__(self, model_id, temperature=0.7, top_p=1, max_tokens=1000) -> None:
         self.model_id = model_id
         model_name = self.get_model_name(model_id)
-        super().__init__(model_name, temperature, top_p, max_tokens)
         self.model_style = ModelStyle.Accelerate
+        self.model = None
+        self.tokenizer = None
+        super().__init__(model_name, temperature, top_p, max_tokens)
 
     def _init_model(self):
         """From https://huggingface.co/docs/accelerate/usage_guides/big_modeling#complete-example"""
@@ -51,8 +53,6 @@ class AccelerateHandler(BaseHandler):
 
     def _init_tokenizer(self):
         tokenizer = AutoTokenizer.from_pretrained(self.model_id, trust_remote_code=True, token=True)
-        # truncation_side="left",
-        # padding_side="right",
         return tokenizer
 
     def _format_prompt_func(self, prompt, function):
