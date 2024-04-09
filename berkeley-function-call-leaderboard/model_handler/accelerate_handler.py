@@ -96,7 +96,7 @@ class AccelerateHandler(BaseHandler):
                 inputs = self.tokenizer(messages, return_tensors="pt")
 
         if tokenize:
-            device = 'cuda:7' if torch.cuda.is_available() else 'cpu'
+            device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
             inputs = inputs.to(device)
         return inputs
 
