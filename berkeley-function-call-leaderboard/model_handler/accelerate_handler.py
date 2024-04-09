@@ -96,7 +96,8 @@ class AccelerateHandler(BaseHandler):
                 inputs = self.tokenizer(messages, return_tensors="pt")
 
         if tokenize:
-            inputs = inputs.to("cuda")
+            device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+            inputs = inputs.to(device)
         return inputs
 
     def inference(self, prompt, functions, test_category):
