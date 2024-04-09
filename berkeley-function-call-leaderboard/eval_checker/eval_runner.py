@@ -1,9 +1,11 @@
 import sys
+from datetime import datetime
 
 sys.path.append("../")
 
 from checker import ast_checker, executable_checker, executable_checker_rest
 from model_handler.constant import MODEL_ID_TO_NAME
+from utils.cloud_utils import BASE_S3_DIR, upload_dir
 from eval_runner_helper import *
 from tqdm import tqdm
 import argparse
@@ -432,21 +434,17 @@ OUTPUT_PATH = "../score/"
 LEADERBOARD_TABLE = {}
 
 
-if __name__ == "__main__":
+
+def get_args():
     parser = argparse.ArgumentParser(description="Process two lists of strings.")
-
-    # Add arguments for two lists of strings
-    parser.add_argument(
-        "--model", nargs="+", type=str, help="A list of model names to evaluate"
-    )
-    parser.add_argument(
-        "--test_category",
-        nargs="+",
-        type=str,
-        help="A list of test categories to run the evaluation on",
-    )
-
+    parser.add_argument("--model", nargs="+", type=str, help="A list of model names to evaluate")
+    parser.add_argument("--test_category", nargs="+", type=str, help="A list of test categories to run the evaluation on")
+    parser.add_argument("--upload_dir", default="", type=str)
     args = parser.parse_args()
+    return args
+
+if __name__ == "__main__":
+    args = get_args()
 
     model_names = args.model
     test_categories = None
@@ -462,3 +460,13 @@ if __name__ == "__main__":
     model_names = [MODEL_ID_TO_NAME.get(model_name, model_name) for model_name in model_names]
 
     runner(model_names, test_categories)
+
+    if args.upload_dir is not None:
+        local_dir = OUTPUT_PATH
+
+        s3_dir = args.upload_dir
+        if "s3://" not in s3_dir: # use args.upload_dir like its the run name
+            date_str = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+            s3_dir = os.path.join(BASE_S3_DIR, f"{date_str}--{s3_dir}")
+
+        upload_dir(local_dir, s3_dir)
