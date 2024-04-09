@@ -94,7 +94,7 @@ if __name__ == "__main__":
                 handler.write(result_to_write, file_to_open)
 
     # Upload results to the cloud
-    if args.upload_dir is not None:
+    if args.upload_dir:
         local_dir = "./result"
 
         s3_dir = args.upload_dir

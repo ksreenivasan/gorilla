@@ -461,7 +461,7 @@ if __name__ == "__main__":
 
     runner(model_names, test_categories)
 
-    if args.upload_dir is not None:
+    if args.upload_dir:
         local_dir = OUTPUT_PATH
 
         s3_dir = args.upload_dir
