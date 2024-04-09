@@ -1,7 +1,7 @@
 import argparse
-import datetime
 import json
 import os
+from datetime import datetime
 
 from tqdm import tqdm
 from model_handler.handler_map import handler_map
@@ -21,7 +21,7 @@ def get_args():
     parser.add_argument("--max_tokens", type=int, default=1200)
     parser.add_argument("--num-gpus", default=1, type=int)
     parser.add_argument("--timeout", default=60, type=int)
-    parser.add_argument("--upload_dir", default=None, type=str)
+    parser.add_argument("--upload_dir", default="", type=str)
 
     args = parser.parse_args()
     return args

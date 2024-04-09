@@ -1,16 +1,8 @@
 import os
-from datetime import datetime
 
 from composer.utils import maybe_create_object_store_from_uri, parse_uri
 
 BASE_S3_DIR = "s3://data-force-one-datasets/eitan/tooluse/gorilla"
-
-
-def get_s3_dir(run_name):
-    date_str = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    my_dir = f"{date_str}--{run_name}"
-    s3_dir = os.path.join(BASE_S3_DIR, my_dir)
-    return s3_dir
 
 
 def get_local_and_cloud_paths(local_dir, upload_dir):
@@ -32,14 +24,7 @@ def get_local_and_cloud_paths(local_dir, upload_dir):
     return local_paths, cloud_paths
 
 
-def upload_dir(local_dir, run_name=None, s3_dir=None):
-
-    # must have either run_name or s3_dir not be `None`
-    # if both are given, s3_dir takes priority
-    assert run_name is not None or s3_dir is not None
-    if s3_dir is None:
-        date_str = get_date_str()
-        s3_dir = os.path.join(BASE_S3_DIR, f"{date_str}--{run_name}")
+def upload_dir(local_dir, s3_dir):
 
     # Get object store
     print(f"Locating cloud directory: {s3_dir}", end="\t")
@@ -61,13 +46,13 @@ def upload_dir(local_dir, run_name=None, s3_dir=None):
     print(f"Uploaded {len(local_paths)} files from {local_dir} to {cloud_dir}.")
     return s3_dir
 
-def download_dir(local_dir, run_name=None, s3_dir=None):
+def download_dir(local_dir, s3_dir):
 
-    # must have either run_name or s3_dir not be `None`
-    # if both are given, s3_dir takes priority
-    assert run_name is not None or s3_dir is not None
-    if s3_dir is None:
-        s3_dir = os.path.join(BASE_S3_DIR, run_name)
+    # # must have either run_name or s3_dir not be `None`
+    # # if both are given, s3_dir takes priority
+    # assert run_name is not None or s3_dir is not None
+    # if s3_dir is None:
+    #     s3_dir = os.path.join(BASE_S3_DIR, run_name)
 
     # Get object store
     print(f"Locating cloud directory: {s3_dir}", end="\t")
