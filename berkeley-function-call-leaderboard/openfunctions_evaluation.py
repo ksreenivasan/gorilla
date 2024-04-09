@@ -100,6 +100,6 @@ if __name__ == "__main__":
         s3_dir = args.upload_dir
         if "s3://" not in s3_dir: # use args.upload_dir like its the run name
             date_str = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-            s3_dir = os.path.join(BASE_S3_DIR, f"{date_str}--{args.upload_dir}")
+            s3_dir = os.path.join(BASE_S3_DIR, f"{date_str}--{s3_dir}")
 
         upload_dir(local_dir, s3_dir)
