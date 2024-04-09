@@ -1,7 +1,12 @@
-import argparse,json,os
+import argparse
+import datetime
+import json
+import os
+
 from tqdm import tqdm
 from model_handler.handler_map import handler_map
 from model_handler.model_style import ModelStyle
+from utils.cloud_utils import upload_dir, BASE_S3_DIR
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -16,6 +21,7 @@ def get_args():
     parser.add_argument("--max_tokens", type=int, default=1200)
     parser.add_argument("--num-gpus", default=1, type=int)
     parser.add_argument("--timeout", default=60, type=int)
+    parser.add_argument("--upload_dir", default=None, type=str)
 
     args = parser.parse_args()
     return args
@@ -63,9 +69,12 @@ if __name__ == "__main__":
             with open("./data/" + file_to_open) as f:
                 for line in f:
                     test_cases.append(json.loads(line))
-            num_existing_result = 0  # if the result file already exists, skip the test cases that have been tested.
-            if os.path.exists("./result/" + args.model + "/" + file_to_open.replace(".json", "_result.json")):
-                with open("./result/"+ args.model+ "/"+ file_to_open.replace(".json", "_result.json")) as f:
+
+            # if the result file already exists, skip the test cases that have been tested.
+            num_existing_result = 0
+            results_path = os.path.join("./result/", handler.model_name, file_to_open.replace(".json", "_result.json"))
+            if os.path.exists(results_path):
+                with open(results_path) as f:
                     for line in f:
                         num_existing_result += 1
             for index, test_case in enumerate(tqdm(test_cases)):
@@ -74,7 +83,7 @@ if __name__ == "__main__":
                 user_question,functions = test_case["question"], test_case["function"]
                 if type(functions) is dict or type(functions) is str:
                     functions = [functions]
-                result,metadata = handler.inference(user_question, functions, test_category)
+                result, metadata = handler.inference(user_question, functions, test_category)
                 result_to_write = {
                     "idx": index,
                     "result": result,
@@ -83,3 +92,14 @@ if __name__ == "__main__":
                     "latency": metadata["latency"],
                 }
                 handler.write(result_to_write, file_to_open)
+
+    # Upload results to the cloud
+    if args.upload_dir is not None:
+        local_dir = "./result"
+
+        s3_dir = args.upload_dir
+        if "s3://" not in s3_dir: # args.upload_dir is the run name
+            date_str = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+            s3_dir = os.path.join(BASE_S3_DIR, f"{date_str}--{args.upload_dir}")
+
+        upload_dir(local_dir, s3_dir)
