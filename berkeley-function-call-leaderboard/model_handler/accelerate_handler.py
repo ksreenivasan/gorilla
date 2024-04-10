@@ -41,14 +41,14 @@ class AccelerateHandler(BaseHandler):
 
     def _init_model(self):
         """From https://huggingface.co/docs/accelerate/usage_guides/big_modeling#complete-example"""
-        checkpoint_dir = f"./model-checkpoints/{self.model_id}"
-        snapshot_download(repo_id=self.model_id, local_dir=checkpoint_dir, token=True)
-        with init_empty_weights():
-            model = AutoModelForCausalLM.from_pretrained(self.model_id, trust_remote_code=True, use_auth_token=True)
-        model = load_checkpoint_and_dispatch(model, checkpoint=checkpoint_dir, device_map="auto")
-        # model = AutoModelForCausalLM.from_pretrained(
-        #     self.model_id, device_map="auto", trust_remote_code=True, token=True
-        #     )
+        # checkpoint_dir = f"./model-checkpoints/{self.model_id}"
+        # snapshot_download(repo_id=self.model_id, local_dir=checkpoint_dir, token=True)
+        # with init_empty_weights():
+        #     model = AutoModelForCausalLM.from_pretrained(self.model_id, trust_remote_code=True, use_auth_token=True)
+        # model = load_checkpoint_and_dispatch(model, checkpoint=checkpoint_dir, device_map="auto")
+        model = AutoModelForCausalLM.from_pretrained(
+            self.model_id, device_map="auto", trust_remote_code=True, token=True
+            )
         return model
 
     def _init_tokenizer(self):
