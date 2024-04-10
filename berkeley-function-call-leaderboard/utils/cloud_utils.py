@@ -43,7 +43,7 @@ def upload_dir(local_dir, s3_dir):
         object_store.upload_object(cloud_path, local_path)
     print("Done.")
 
-    print(f"Uploaded {len(local_paths)} files from {local_dir} to {cloud_dir}.")
+    print(f"Uploaded {len(local_paths)} files from {local_dir} to {s3_dir}.")
     return s3_dir
 
 def download_dir(local_dir, s3_dir):
@@ -75,5 +75,5 @@ def download_dir(local_dir, s3_dir):
         object_store.download_object(cloud_path, local_path, overwrite=True)
     print("Done.")
 
-    print(f"Downloaded {len(cloud_paths)} files from {cloud_dir} to {local_dir}.")
+    print(f"Downloaded {len(cloud_paths)} files from {s3_dir} to {local_dir}.")
     return local_dir
