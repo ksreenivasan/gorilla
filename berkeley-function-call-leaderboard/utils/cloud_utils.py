@@ -38,7 +38,7 @@ def upload_dir(local_dir, s3_dir):
     local_paths, cloud_paths = get_local_and_cloud_paths(local_dir, cloud_dir)
 
     # Upload all objects to the cloud_dir
-    print(f"Uploading files to {cloud_dir}...", end="\t")
+    print(f"Uploading files to {cloud_dir}", end="\t")
     for local_path, cloud_path in zip(local_paths, cloud_paths):
         object_store.upload_object(cloud_path, local_path)
     print("Done.")
@@ -63,7 +63,7 @@ def download_dir(local_dir, s3_dir):
     print("Done.")
 
     # Download all objects in the cloud_dir
-    print(f"Downloading files to {local_dir}...", end="\t")
+    print(f"Downloading files to {local_dir}", end="\t")
     cloud_paths = object_store.list_objects(cloud_dir)
     for cloud_path in cloud_paths:
 
