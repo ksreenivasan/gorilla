@@ -1,6 +1,12 @@
 from model_handler.handler import BaseHandler
 from model_handler.model_style import ModelStyle
-from model_handler.utils import language_specific_pre_processing, ast_parse
+from model_handler.utils import (
+    language_specific_pre_processing,
+    ast_parse,
+    convert_to_tool,
+    augment_prompt_by_languge,
+    convert_to_function_call,
+)
 from model_handler.constant import (
     SYSTEM_PROMPT_FOR_CHAT_MODEL,
     USER_PROMPT_FOR_CHAT_MODEL,
@@ -9,6 +15,7 @@ from model_handler.constant import (
 import time
 from openai import OpenAI
 import re
+import os
 
 
 class DatabricksHandler(BaseHandler):
@@ -26,32 +33,105 @@ class DatabricksHandler(BaseHandler):
         )
 
     def inference(self, prompt, functions, test_category):
-        functions = language_specific_pre_processing(functions, test_category, False)
-        if type(functions) is not list:
-            functions = [functions]
-        message = [
-            {"role": "system", "content": SYSTEM_PROMPT_FOR_CHAT_MODEL},
-            {
-                "role": "user",
-                "content": "Questions:"
-                + USER_PROMPT_FOR_CHAT_MODEL.format(
-                    user_prompt=prompt, functions=str(functions)
-                ),
-            },
-        ]
-        start_time = time.time()
-        response = self.client.chat.completions.create(
-            messages=message,
-            model=self.model_name,
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
-            top_p=self.top_p,
-        )
-        latency = time.time() - start_time
-        result = response.choices[0].message.content
+        if "FC" not in self.model_name:
+            functions = language_specific_pre_processing(functions, test_category, False)
+            if type(functions) is not list:
+                functions = [functions]
+            message = [
+                {"role": "system", "content": SYSTEM_PROMPT_FOR_CHAT_MODEL},
+                {
+                    "role": "user",
+                    "content": "Questions:"
+                    + USER_PROMPT_FOR_CHAT_MODEL.format(
+                        user_prompt=prompt, functions=str(functions)
+                    ),
+                },
+            ]
+            start_time = time.time()
+            response = self.client.chat.completions.create(
+                messages=message,
+                model=self.model_name,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=self.top_p,
+            )
+            latency = time.time() - start_time
+            result = response.choices[0].message.content
+        else:
+            # TODO: see if this is necessary. they do it for openai models
+            prompt = augment_prompt_by_languge(prompt, test_category)
+            functions = language_specific_pre_processing(functions, test_category, True)
+            if type(functions) is not list:
+                functions = [functions]
+            message = [{"role": "user", "content": "Questions:" + prompt}]
+
+            # NOTE: since we're using the deprecated function_call api, we don't
+            # need to convert it to "tools". But this method also modifies the functions
+            # list to make it adhere to the json schema. So I guess I need to run it anyway lol.
+            # TODO: Fix this.
+            oai_tool = convert_to_tool(
+                functions, GORILLA_TO_OPENAPI, self.model_style, test_category, True
+            )
+
+            start_time = time.time()
+            # TODO: do this more elegantly
+            API_FAILURE_MESSAGE = None # hacky way to get the error message out of the try block
+            if len(functions) > 0:
+                try:
+                    response = self.client.chat.completions.create(
+                        messages=message,
+                        model=self.model_name.replace("-FC", ""),
+                        temperature=self.temperature,
+                        max_tokens=self.max_tokens,
+                        top_p=self.top_p,
+                        functions=functions,
+                        function_call='auto', # this is important as it let's the model decide when to use FC
+                    )
+                except Exception as e:
+                    print(f"Error while trying to do FC: {e}")
+                    print(f"Messsages={message}")
+                    print(f"Functions={functions}")
+                    API_FAILURE_MESSAGE = f"API Failure: {e}"
+            else:
+                # @KS: TODO: Gorilla decided not to use the tool? What's going on here.
+                print(f"Kartik: BFCL decided to not use the tool. Dig.")
+                print(f"Prompt = {prompt}")
+                print(f"Functions = {functions}")
+                response = self.client.chat.completions.create(
+                    messages=message,
+                    model=self.model_name.replace("-FC", ""),
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens,
+                    top_p=self.top_p,
+                )
+            latency = time.time() - start_time
+            # import ipdb; ipdb.set_trace()
+            try:
+                # TODO: changed this to refer to function_call
+                # but will need to change this back to tool_calls/function_calls
+                # when the FC impl changes.
+                func_call = response.choices[0].message.function_call
+                result = [
+                    {func_call.name: func_call.arguments}
+                ]
+                # result = [
+                #     {func_call.function.name: func_call.function.arguments}
+                #     for func_call in response.choices[0].message.tool_calls
+                # ]
+            except Exception as e:
+                print("Error while trying to extract function calls from response:", e)
+                if API_FAILURE_MESSAGE:
+                    result = API_FAILURE_MESSAGE
+                else:
+                    result = response.choices[0].message.content
         metadata = {}
-        metadata["input_tokens"] = response.usage.prompt_tokens
-        metadata["output_tokens"] = response.usage.completion_tokens
+        if API_FAILURE_MESSAGE:
+            # do something
+            metadata["input_tokens"] = -1
+            metadata["output_tokens"] = -1
+        else:
+            metadata["input_tokens"] = response.usage.prompt_tokens
+            metadata["output_tokens"] = response.usage.completion_tokens
         metadata["latency"] = latency
         return result, metadata
 

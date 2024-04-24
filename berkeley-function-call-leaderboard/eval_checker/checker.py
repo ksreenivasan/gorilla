@@ -645,7 +645,7 @@ def executable_checker(decoded_result, func_description):
             if not (type(exec_output) == type(expected_result)):
                 result["valid"] = False
                 result["error"].append(
-                    f"Worng type for: {repr(function_call)}. Expected type: {type(expected_result)}, but got: {type(exec_output)}."
+                    f"Wrong type for: {repr(function_call)}. Expected type: {type(expected_result)}, but got: {type(exec_output)}."
                 )
                 result["error_type"] = "executable_checker:wrong_result_type"
 

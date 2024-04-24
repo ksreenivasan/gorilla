@@ -342,12 +342,14 @@ def runner(model_names, test_categories, api_sanity_check):
             if is_executable(test_category):
                 # We only test the API with ground truth once
                 if not API_TESTED and api_sanity_check:
-                    print("---- Sanity checking API status ----")
-                    api_status_sanity_check_rest()
-                    api_status_sanity_check_executable()
-                    print("---- Sanity check Passed 💯 ----")
+                    try:
+                        print("---- Sanity checking API status ----")
+                        api_status_sanity_check_rest()
+                        api_status_sanity_check_executable()
+                        print("---- Sanity check Passed 💯 ----")
+                    except Exception as e:
+                        print(f"API Sanity check failed. Error: {str(e)}")
                     API_TESTED = True
-                    
                 accuracy, total_count = single_executable_file_runner(
                     handler, model_result, prompt, model_name, test_category
                 )
