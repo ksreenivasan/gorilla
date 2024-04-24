@@ -33,6 +33,8 @@ class DatabricksHandler(BaseHandler):
         )
 
     def inference(self, prompt, functions, test_category):
+        # TODO: do this more elegantly
+        API_FAILURE_MESSAGE = None # hacky way to get the error message out of the try block
         if "FC" not in self.model_name:
             functions = language_specific_pre_processing(functions, test_category, False)
             if type(functions) is not list:
@@ -74,8 +76,6 @@ class DatabricksHandler(BaseHandler):
             )
 
             start_time = time.time()
-            # TODO: do this more elegantly
-            API_FAILURE_MESSAGE = None # hacky way to get the error message out of the try block
             if len(functions) > 0:
                 try:
                     response = self.client.chat.completions.create(
@@ -136,37 +136,57 @@ class DatabricksHandler(BaseHandler):
         return result, metadata
 
     def decode_ast(self, result, language="Python"):
-        func = re.sub(r"'([^']*)'", r"\1", result)
-        func = func.replace("\n    ", "")
-        if not func.startswith("["):
-            func = "[" + func
-        if not func.endswith("]"):
-            func = func + "]"
-        if func.startswith("['"):
-            func = func.replace("['", "[")
-        try:
-            decode_output = ast_parse(func, language)
-        except:
-            decode_output = ast_parse(result, language)
+        if "FC" not in self.model_name:
+            func = re.sub(r"'([^']*)'", r"\1", result)
+            func = func.replace("\n    ", "")
+            if not func.startswith("["):
+                func = "[" + func
+            if not func.endswith("]"):
+                func = func + "]"
+            if func.startswith("['"):
+                func = func.replace("['", "[")
+            try:
+                decode_output = ast_parse(func, language)
+            except:
+                decode_output = ast_parse(result, language)
+        else:
+            # TODO: likely this is causing errors in AST parsing
+            # there's different pre-processing for GPT, Claude, Mistral etc.
+            # not sure what the right thing to do here is.
+            decoded_output = []
+            for invoked_function in result:
+                name = list(invoked_function.keys())[0]
+                params = json.loads(invoked_function[name])
+                if language == "Python":
+                    pass
+                else:
+                    # all values of the json are casted to string for java and javascript
+                    for key in params:
+                        params[key] = str(params[key])
+                decoded_output.append({name: params})
         return decode_output
 
     def decode_execute(self, result, language="Python"):
-        func = re.sub(r"'([^']*)'", r"\1", result)
-        func = func.replace("\n    ", "")
-        if not func.startswith("["):
-            func = "[" + func
-        if not func.endswith("]"):
-            func = func + "]"
-        if func.startswith("['"):
-            func = func.replace("['", "[")
-        try:
-            decode_output = ast_parse(func, language)
-        except:
-            decode_output = ast_parse(result, language)
-        execution_list = []
-        for function_call in decode_output:
-            for key, value in function_call.items():
-                execution_list.append(
-                    f"{key}({','.join([f'{k}={repr(v)}' for k, v in value.items()])})"
-                )
-        return execution_list
+        if "FC" not in self.model_name:
+            func = re.sub(r"'([^']*)'", r"\1", result)
+            func = func.replace("\n    ", "")
+            if not func.startswith("["):
+                func = "[" + func
+            if not func.endswith("]"):
+                func = func + "]"
+            if func.startswith("['"):
+                func = func.replace("['", "[")
+            try:
+                decode_output = ast_parse(func, language)
+            except:
+                decode_output = ast_parse(result, language)
+            execution_list = []
+            for function_call in decode_output:
+                for key, value in function_call.items():
+                    execution_list.append(
+                        f"{key}({','.join([f'{k}={repr(v)}' for k, v in value.items()])})"
+                    )
+            return execution_list
+        else:
+            function_call = convert_to_function_call(result)
+            return function_call
