@@ -380,12 +380,15 @@ def runner(model_names, test_categories, api_sanity_check):
             )
             print(f"✅ Test completed: {test_category}. 🎯 Accuracy: {accuracy}")
 
-
-    # This function reads all the score files from local folder and updates the leaderboard table.
-    # This is helpful when you only want to run the evaluation for a subset of models and test categories.
-    update_leaderboard_table_with_score_file(LEADERBOARD_TABLE, OUTPUT_PATH)
-    # Write the leaderboard table to a file
-    generate_leaderboard_csv(LEADERBOARD_TABLE, OUTPUT_PATH)
+    # hacky add on because the dict of models is hard coded and I can't keep updating it
+    try:
+        # This function reads all the score files from local folder and updates the leaderboard table.
+        # This is helpful when you only want to run the evaluation for a subset of models and test categories.
+        update_leaderboard_table_with_score_file(LEADERBOARD_TABLE, OUTPUT_PATH)
+        # Write the leaderboard table to a file
+        generate_leaderboard_csv(LEADERBOARD_TABLE, OUTPUT_PATH)
+    except Exception as e:
+        print(f"Error while updating leaderboard table: {str(e)}")
 
 
 ARG_PARSE_MAPPING = {

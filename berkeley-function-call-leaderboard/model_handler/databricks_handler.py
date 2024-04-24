@@ -16,6 +16,7 @@ import time
 from openai import OpenAI
 import re
 import os
+import json
 
 
 class DatabricksHandler(BaseHandler):
@@ -28,8 +29,8 @@ class DatabricksHandler(BaseHandler):
 
         # NOTE: To run the Databricks model, you need to provide your own Databricks API key and your own Azure endpoint URL.
         self.client = OpenAI(
-            api_key="{YOUR_DATABRICKS_API_KEY}",
-            base_url="{YOUR_DATABRICKS_AZURE_ENDPOINT_URL}",
+            api_key=os.environ["DATABRICKS_API_KEY"],
+            base_url=os.environ["DATABRICKS_ENDPOINT_URL"],
         )
 
     def inference(self, prompt, functions, test_category):
@@ -146,9 +147,9 @@ class DatabricksHandler(BaseHandler):
             if func.startswith("['"):
                 func = func.replace("['", "[")
             try:
-                decode_output = ast_parse(func, language)
+                decoded_output = ast_parse(func, language)
             except:
-                decode_output = ast_parse(result, language)
+                decoded_output = ast_parse(result, language)
         else:
             # TODO: likely this is causing errors in AST parsing
             # there's different pre-processing for GPT, Claude, Mistral etc.
@@ -164,7 +165,7 @@ class DatabricksHandler(BaseHandler):
                     for key in params:
                         params[key] = str(params[key])
                 decoded_output.append({name: params})
-        return decode_output
+        return decoded_output
 
     def decode_execute(self, result, language="Python"):
         if "FC" not in self.model_name:

@@ -134,6 +134,7 @@ UNDERSCORE_TO_DOT = [
     "meetkai/functionary-small-v2.4-FC",
     "meetkai/functionary-medium-v2.4-FC",
     "NousResearch/Hermes-2-Pro-Mistral-7B",
+    "databricks-dbrx-instruct-FC",
 ]
 
 TEST_CATEGORIES = {
