@@ -1,7 +1,11 @@
-import argparse,json,os
+import argparse
+import json
+import os
+from datetime import datetime
 from tqdm import tqdm
 from model_handler.handler_map import handler_map
 from model_handler.model_style import ModelStyle
+from utils.cloud_utils import upload_dir, BASE_S3_DIR
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -16,6 +20,7 @@ def get_args():
     parser.add_argument("--max-tokens", type=int, default=1200)
     parser.add_argument("--num-gpus", default=1, type=int)
     parser.add_argument("--timeout", default=60, type=int)
+    parser.add_argument("--upload_dir", default="", type=str)
 
     args = parser.parse_args()
     return args
@@ -92,3 +97,14 @@ if __name__ == "__main__":
                     "latency": metadata["latency"],
                 }
                 handler.write(result_to_write, file_to_open)
+
+    # Upload results to the cloud
+    if args.upload_dir:
+        for local_dir in ["./result", "./score"]:
+
+            s3_dir = args.upload_dir
+            if "s3://" not in s3_dir: # use args.upload_dir like its the run name
+                date_str = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+                s3_dir = os.path.join(BASE_S3_DIR, f"{date_str}--{s3_dir}")
+
+            upload_dir(local_dir, s3_dir)

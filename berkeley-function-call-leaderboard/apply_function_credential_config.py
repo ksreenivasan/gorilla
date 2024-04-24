@@ -1,4 +1,5 @@
 import json
+import os
 import argparse
 
 
@@ -7,28 +8,34 @@ parser.add_argument("--input-file", help="Path to the function credential config
 parser.add_argument("--output-file", help="Path to the output file.", default="")
 args = parser.parse_args()
 
-# Load the configuration with actual API keys
-with open("function_credential_config.json") as f:
-    function_credential_config = json.load(f)
+def initialize_placeholders():
 
-PLACEHOLDERS = {
-    "YOUR-GEOCODE-API-KEY": function_credential_config[3]["GEOCODE-API-KEY"],
-    "YOUR-RAPID-API-KEY": function_credential_config[0]["RAPID-API-KEY"],
-    "YOUR-OMDB-API-KEY": function_credential_config[2]["OMDB-API-KEY"],
-    "YOUR-EXCHANGERATE-API-KEY": function_credential_config[1]["EXCHANGERATE-API-KEY"]
-}
+    # Load the configuration with actual API keys
+    with open("function_credential_config.json") as f:
+        function_credential_config = json.load(f)
+
+    # First, check if API keys are in environment variables
+    # If they don't exist, then check if they are in the `function_credential_config` json
+    placeholders = {
+        "YOUR-GEOCODE-API-KEY": os.environ.get("GEOCODE_API_KEY", function_credential_config[3]["GEOCODE-API-KEY"]),
+        "YOUR-RAPID-API-KEY": os.environ.get("RAPID_API_KEY", function_credential_config[0]["RAPID-API-KEY"]),
+        "YOUR-OMDB-API-KEY": os.environ.get("OMDB_API_KEY", function_credential_config[2]["OMDB-API-KEY"]),
+        "YOUR-EXCHANGERATE-API-KEY": os.environ.get("EXCHANGERATE_API_KEY", function_credential_config[1]["EXCHANGERATE-API-KEY"]),
+    }
+
+    return placeholders
 
 
-def replace_placeholders(data):
+def replace_placeholders(data, placeholders):
     """
     Recursively replace placeholders in a nested dictionary or list using string.replace.
     """
     if isinstance(data, dict):
         for key, value in data.items():
             if isinstance(value, (dict, list)):
-                replace_placeholders(value)
+                replace_placeholders(value, placeholders)
             elif isinstance(value, str):
-                for placeholder, actual_value in PLACEHOLDERS.items():
+                for placeholder, actual_value in placeholders.items():
                     if placeholder in value:  # Check if placeholder is in the string
                         data[key] = value.replace(placeholder, actual_value)
     elif isinstance(data, list):
@@ -36,14 +43,15 @@ def replace_placeholders(data):
             if isinstance(item, (dict, list)):
                 replace_placeholders(item)
             elif isinstance(item, str):
-                for placeholder, actual_value in PLACEHOLDERS.items():
+                for placeholder, actual_value in placeholders.items():
                     if placeholder in item:  # Check if placeholder is in the string
                         data[idx] = item.replace(placeholder, actual_value)
     return data
 
 def main():
     # Verify all values are provided
-    for key, value in PLACEHOLDERS.items():
+    placeholders = initialize_placeholders()
+    for key, value in placeholders.items():
         if value == "":
             print(f"Please provide a value for the placeholder {key}.")
             return
