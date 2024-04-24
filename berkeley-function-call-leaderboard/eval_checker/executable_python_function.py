@@ -1,3 +1,4 @@
+import os
 import json
 import math
 import random
@@ -9,11 +10,16 @@ from custom_exception import NoAPIKeyError
 api_key = {}
 with open("../function_credential_config.json") as f:
     data = json.loads(f.read())
-    for item in data:
-        for k, v in item.items():
-            if v == "":
-                raise NoAPIKeyError()
-            api_key[k] = v
+    try:
+        for item in data:
+            for k, v in item.items():
+                if v == "":
+                    # check if the API key is in the environment variables
+                    v = os.environ.get(k.replace("-", "_"))
+                api_key[k] = v
+    except Exception as e:
+        # some API keys may be missing
+        raise NoAPIKeyError()
 
 
 def calculate_triangle_area(base, height):

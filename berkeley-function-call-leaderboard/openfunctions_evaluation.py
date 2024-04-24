@@ -46,6 +46,13 @@ def load_file(test_category):
     elif test_category == "no-multiple":
         no_multiple_cats = [cat for cat in test_categories.keys() if "multiple" not in cat]
         test_cate,files_to_open = no_multiple_cats,[test_categories[cat] for cat in no_multiple_cats]
+    elif test_category == "simple_v0":
+        simple_cats = ["simple",
+                       "java",
+                       "javascript",
+                       # "relevance", # too slow and FC gets 0 right now anyway
+                       ]
+        test_cate,files_to_open = simple_cats, [test_categories[cat] for cat in simple_cats]
     else:
         test_cate,files_to_open = [test_category], [test_categories[test_category]]
     return test_cate,files_to_open
