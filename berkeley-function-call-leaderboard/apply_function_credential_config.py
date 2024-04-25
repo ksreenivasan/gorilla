@@ -41,7 +41,7 @@ def replace_placeholders(data, placeholders):
     elif isinstance(data, list):
         for idx, item in enumerate(data):
             if isinstance(item, (dict, list)):
-                replace_placeholders(item)
+                replace_placeholders(item, placeholders)
             elif isinstance(item, str):
                 for placeholder, actual_value in placeholders.items():
                     if placeholder in item:  # Check if placeholder is in the string
@@ -63,7 +63,7 @@ def main():
         for line in lines:
             try:
                 data = json.loads(line)  # Parse each line as a JSON object
-                data = replace_placeholders(data)  # Replace placeholders
+                data = replace_placeholders(data, placeholders)  # Replace placeholders
                 modified_data.append(json.dumps(data))  # Convert back to string and store
             except json.JSONDecodeError:
                 # Handle the case where a line is not a valid JSON object

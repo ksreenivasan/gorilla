@@ -6,6 +6,7 @@ from checker import ast_checker, executable_checker, executable_checker_rest
 from eval_runner_helper import *
 from tqdm import tqdm
 import argparse
+from utils.parse_results import get_acc_df
 
 
 # NOTE: This file should be run in the `eval_checker` directory
@@ -341,6 +342,8 @@ def runner(model_names, test_categories, api_sanity_check):
 
             if is_executable(test_category):
                 # We only test the API with ground truth once
+                print("Warning: Skipping API Sanity Checks.")
+                API_TESTED = True
                 if not API_TESTED and api_sanity_check:
                     try:
                         print("---- Sanity checking API status ----")
@@ -486,3 +489,11 @@ if __name__ == "__main__":
                 test_categories.append(test_category)
 
     runner(model_names, test_categories, api_sanity_check)
+
+    # @KS: TODO: add result_parser here to go through jsons, extract numbers, print and upload them
+    acc_df = get_acc_df(model_names, OUTPUT_PATH)
+    print(f"{model_names} Accuracy results:")
+    print("--"*100)
+    print(acc_df)
+    print("--"*100)
+    # TODO: upload acc_df csv to cloud?

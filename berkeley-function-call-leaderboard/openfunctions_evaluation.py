@@ -99,6 +99,7 @@ if __name__ == "__main__":
                 handler.write(result_to_write, file_to_open)
 
     # Upload results to the cloud
+    # TODO: this is not being used right now. Using utils/upload_to_cloud.py instead
     if args.upload_dir:
         for local_dir in ["./result", "./score"]:
 
