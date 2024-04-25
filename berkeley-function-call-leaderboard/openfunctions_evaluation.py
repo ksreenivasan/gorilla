@@ -75,7 +75,11 @@ if __name__ == "__main__":
             print("Generating: " + file_to_open)
             test_cases = []
             with open("./data/" + file_to_open) as f:
+                line_id = 0
                 for line in f:
+                    line_id += 1
+                    if (test_category == "simple") and (line_id > 10):
+                        break
                     test_cases.append(json.loads(line))     
             num_existing_result = 0  # if the result file already exists, skip the test cases that have been tested.
             if os.path.exists("./result/" + args.model + "/" + file_to_open.replace(".json", "_result.json")):
