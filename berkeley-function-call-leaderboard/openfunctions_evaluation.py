@@ -53,7 +53,7 @@ def load_file(test_category):
         test_cate,files_to_open = no_multiple_cats,[test_categories[cat] for cat in no_multiple_cats]
     elif test_category == "simple_v0":
         simple_cats = ["simple",
-                       # "executable_simple",
+                       "executable_simple",
                        "java",
                        "javascript",
                        # "relevance", # too slow and FC gets 0 right now anyway
