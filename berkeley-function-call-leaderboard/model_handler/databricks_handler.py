@@ -89,9 +89,9 @@ class DatabricksHandler(BaseHandler):
                         function_call='auto', # this is important as it let's the model decide when to use FC
                     )
                 except Exception as e:
-                    print(f"Error while trying to do FC: {e}")
-                    print(f"Messsages={message}")
-                    print(f"Functions={functions}")
+                    print(f"\nError while trying to do FC: {e}\n")
+                    print(f"Messages={message}")
+                    print(f"Functions={functions}\n")
                     API_FAILURE_MESSAGE = f"API Failure: {e}"
             else:
                 # @KS: TODO: Gorilla decided not to use the tool? What's going on here.
