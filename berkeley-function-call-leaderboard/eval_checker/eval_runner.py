@@ -493,7 +493,7 @@ if __name__ == "__main__":
     # @KS: TODO: add result_parser here to go through jsons, extract numbers, print and upload them
     acc_df = get_acc_df(model_names, OUTPUT_PATH)
     print(f"{model_names} Accuracy results:")
-    print("--"*100)
-    print(acc_df)
-    print("--"*100)
+    print("--"*50)
+    print(acc_df['metric', 'accuracy', 'correct_count', 'total_count'])
+    print("--"*50)
     # TODO: upload acc_df csv to cloud?
