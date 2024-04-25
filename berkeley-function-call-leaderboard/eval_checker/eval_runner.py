@@ -494,6 +494,6 @@ if __name__ == "__main__":
     acc_df = get_acc_df(model_names, OUTPUT_PATH)
     print(f"{model_names} Accuracy results:")
     print("--"*50)
-    print(acc_df['metric', 'accuracy', 'correct_count', 'total_count'])
+    print(acc_df[['metric', 'accuracy', 'correct_count', 'total_count']])
     print("--"*50)
     # TODO: upload acc_df csv to cloud?
