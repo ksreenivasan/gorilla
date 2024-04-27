@@ -85,8 +85,10 @@ class DatabricksHandler(BaseHandler):
                         temperature=self.temperature,
                         max_tokens=self.max_tokens,
                         top_p=self.top_p,
-                        functions=functions,
-                        function_call='auto', # this is important as it let's the model decide when to use FC
+                        tools=oai_tool,
+                        tool_choice='auto', # this is important as it let's the model decide when to use FC
+                        # functions=functions,
+                        # function_call='auto', # this is important as it let's the model decide when to use FC
                     )
                 except Exception as e:
                     print(f"\nError while trying to do FC: {e}\n")
@@ -112,13 +114,13 @@ class DatabricksHandler(BaseHandler):
                 # but will need to change this back to tool_calls/function_calls
                 # when the FC impl changes.
                 func_call = response.choices[0].message.function_call
-                result = [
-                    {func_call.name: func_call.arguments}
-                ]
                 # result = [
-                #     {func_call.function.name: func_call.function.arguments}
-                #     for func_call in response.choices[0].message.tool_calls
+                #     {func_call.name: func_call.arguments}
                 # ]
+                result = [
+                    {func_call.function.name: func_call.function.arguments}
+                    for func_call in response.choices[0].message.tool_calls
+                ]
             except Exception as e:
                 print("Error while trying to extract function calls from response:", e)
                 if API_FAILURE_MESSAGE:
