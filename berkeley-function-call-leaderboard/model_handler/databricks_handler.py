@@ -67,7 +67,10 @@ class DatabricksHandler(BaseHandler):
             if type(functions) is not list:
                 functions = [functions]
             message = [{"role": "system", "content": SYSTEM_PROMPT_FOR_CHAT_MODEL},
-                       {"role": "user", "content": "Questions:" + prompt}]
+                       {"role": "user", "content": "Questions:"
+                    + USER_PROMPT_FOR_CHAT_MODEL.format(
+                        user_prompt=prompt, functions=str(functions)
+                    )}]
 
             # NOTE: since we're using the deprecated function_call api, we don't
             # need to convert it to "tools". But this method also modifies the functions
@@ -111,13 +114,7 @@ class DatabricksHandler(BaseHandler):
             latency = time.time() - start_time
             # import ipdb; ipdb.set_trace()
             try:
-                # TODO: changed this to refer to function_call
-                # but will need to change this back to tool_calls/function_calls
-                # when the FC impl changes.
                 func_call = response.choices[0].message.function_call
-                # result = [
-                #     {func_call.name: func_call.arguments}
-                # ]
                 result = [
                     {func_call.function.name: func_call.function.arguments}
                     for func_call in response.choices[0].message.tool_calls
