@@ -62,7 +62,7 @@ class DatabricksHandler(BaseHandler):
             result = response.choices[0].message.content
         else:
             # TODO: see if this is necessary. they do it for openai models
-            prompt = augment_prompt_by_languge(prompt, test_category)
+            # prompt = augment_prompt_by_languge(prompt, test_category)
             functions = language_specific_pre_processing(functions, test_category, True)
             if type(functions) is not list:
                 functions = [functions]
