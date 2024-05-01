@@ -10,6 +10,12 @@ USER_PROMPT_FOR_CHAT_MODEL = """
     Should you decide to return the function call(s),Put it in the format of [func1(params_name=params_value, params_name2=params_value2...), func2(params)]\n
     NO other text MUST be included. 
 """
+
+USER_PROMPT_FOR_CHAT_MODEL_FC = """
+    Questions:{user_prompt}\nHere is a list of functions in JSON format that you can invoke:\n{functions}. 
+    Should you decide to return the function call(s),Put it in JSON format\n
+    NO other text MUST be included. 
+"""
 GORILLA_TO_OPENAPI = {
     "integer": "integer",
     "number": "number",

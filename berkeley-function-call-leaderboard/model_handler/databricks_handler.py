@@ -11,6 +11,7 @@ from model_handler.constant import (
     SYSTEM_PROMPT_FOR_CHAT_MODEL,
     USER_PROMPT_FOR_CHAT_MODEL,
     GORILLA_TO_OPENAPI,
+    USER_PROMPT_FOR_CHAT_MODEL_FC
 )
 import time
 from openai import OpenAI
@@ -68,7 +69,7 @@ class DatabricksHandler(BaseHandler):
                 functions = [functions]
             message = [{"role": "system", "content": SYSTEM_PROMPT_FOR_CHAT_MODEL},
                        {"role": "user", "content": "Questions:"
-                    + USER_PROMPT_FOR_CHAT_MODEL.format(
+                    + USER_PROMPT_FOR_CHAT_MODEL_FC.format(
                         user_prompt=prompt, functions=str(functions)
                     )}]
 
