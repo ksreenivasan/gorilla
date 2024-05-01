@@ -11,7 +11,8 @@ from model_handler.constant import (
     SYSTEM_PROMPT_FOR_CHAT_MODEL,
     USER_PROMPT_FOR_CHAT_MODEL,
     GORILLA_TO_OPENAPI,
-    USER_PROMPT_FOR_CHAT_MODEL_FC
+    USER_PROMPT_FOR_CHAT_MODEL_FC,
+    SYSTEM_PROMPT_FOR_CHAT_MODEL_FC
 )
 import time
 from openai import OpenAI
@@ -67,11 +68,8 @@ class DatabricksHandler(BaseHandler):
             functions = language_specific_pre_processing(functions, test_category, True)
             if type(functions) is not list:
                 functions = [functions]
-            message = [{"role": "system", "content": SYSTEM_PROMPT_FOR_CHAT_MODEL},
-                       {"role": "user", "content": "Questions:"
-                    + USER_PROMPT_FOR_CHAT_MODEL_FC.format(
-                        user_prompt=prompt, functions=str(functions)
-                    )}]
+            message = [{"role": "system", "content": SYSTEM_PROMPT_FOR_CHAT_MODEL_FC.format(functions=str(functions))},
+                       {"role": "user", "content": prompt}]
 
             # NOTE: since we're using the deprecated function_call api, we don't
             # need to convert it to "tools". But this method also modifies the functions
