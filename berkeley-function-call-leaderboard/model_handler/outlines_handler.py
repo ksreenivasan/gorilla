@@ -28,17 +28,27 @@ from outlines import generate, models
 from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_signature
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+gemma_prompt = """
+            <bos><start_of_turn>user\n
+            You are an helpful assistant who has access to the following functions to help the user, you can use the functions if needed-\n
+            {function}\n
+            Here is the questions you need to answer:\n
+            {prompt}\n
+            If you are requested to use a function, you ALWAYS output functions in a valid json schema. Do not respond with anything else. Do not be verbose. Only output JSON."
+            <end_of_turn>\n
+            <start_of_turn>model\n
+        """
 
 class OutlinesHandler(BaseHandler):
 
     def __init__(
         self,
         model_name,
-        structured: bool = True,
-        tokenizer_name = None,
         temperature=0.7,
         top_p=1,
-        max_tokens=1000,
+        max_tokens=150,
+        structured: bool = True,
+        tokenizer_name = None,
         n_tool_calls=1,
         seed=42) -> None:
 
@@ -61,15 +71,6 @@ class OutlinesHandler(BaseHandler):
             self.rng.manual_seed(self.seed)
 
         super().__init__(model_name, temperature, top_p, max_tokens)
-
-    def _format_prompt_func(self, prompt, function):
-        user_prompt = USER_PROMPT_FOR_CHAT_MODEL.format(
-            user_prompt=prompt, functions=str(function)
-            )
-        system_prompt = SYSTEM_PROMPT_FOR_CHAT_MODEL
-
-        #return f"SYSTEM: {system_prompt}\nUSER: {user_prompt}\nASSISTANT: "
-        return user_prompt, system_prompt
 
     def inference(self, prompt, functions, test_category):
 
@@ -323,6 +324,9 @@ def format_system_prompt(system_prompt, functions):
 
 
 def format_prompt(user_prompt, tokenizer, functions, apply_chat_template, system_prompt=None):
+
+    functions_str = "\n".join([str(function) for function in functions])
+    return gemma_prompt.format(function=functions_str, prompt=user_prompt)
 
     system_prompt = format_system_prompt(system_prompt, functions)
 
