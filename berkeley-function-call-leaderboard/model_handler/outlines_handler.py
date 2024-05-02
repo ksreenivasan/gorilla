@@ -115,6 +115,10 @@ class OutlinesHandler(BaseHandler):
         metadata = {"input_tokens": 0, "output_tokens": 0, "latency": latency}
         return result, metadata
 
+    def decode_ast(self, result, language="Python"):
+        decoded_output = ast_parse(result, language)
+        return decoded_output
+
     def decode_execute(self, result):
 
         # Parse result
