@@ -1,8 +1,11 @@
-import argparse, json, os
-from tqdm import tqdm
+import argparse
+import json
+import os
+
+from model_handler.constant import USE_COHERE_OPTIMIZATION
 from model_handler.handler_map import handler_map
 from model_handler.model_style import ModelStyle
-from model_handler.constant import USE_COHERE_OPTIMIZATION
+from tqdm import tqdm
 
 
 def get_args():
@@ -81,13 +84,15 @@ if __name__ == "__main__":
                 "./result/"
                 + args.model.replace("/", "_")
                 + "/"
-                + file_to_open.replace(".json", "_result.json")
+                + file_to_open
+                # + file_to_open.replace(".json", "_result.json")
             ):
                 with open(
                     "./result/"
                     + args.model.replace("/", "_")
                     + "/"
-                    + file_to_open.replace(".json", "_result.json")
+                    + file_to_open
+                    # + file_to_open.replace(".json", "_result.json")
                 ) as f:
                     for line in f:
                         num_existing_result += 1
