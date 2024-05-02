@@ -3,6 +3,7 @@ import os
 import re
 import time
 from functools import reduce
+from textwrap import dedent
 from typing import Union
 
 import torch
@@ -47,7 +48,7 @@ class OutlinesHandler(BaseHandler):
         temperature=0.7,
         top_p=1,
         max_tokens=150,
-        structured: bool = True,
+        structured: bool = False,
         tokenizer_name = None,
         n_tool_calls=1,
         seed=42) -> None:
@@ -192,7 +193,7 @@ def function_to_regex(function, test_category, whitespace_pattern, verbose):
     if verbose >= 1:
         print(schema)
 
-    schema_regex = build_regex_from_schema(schema, whitespace_pattern)
+    schema_regex = build_regex_from_schema(schema.strip(), whitespace_pattern)
     function_regex = f'{{"function": "{function["name"]}", "arguments": {schema_regex}}}'
 
     if verbose >= 2:
@@ -321,12 +322,22 @@ def format_system_prompt(system_prompt, functions):
         system_prompt = system_prompt.format(functions=functions_str)
     return system_prompt
 
-
-
 def format_prompt(user_prompt, tokenizer, functions, apply_chat_template, system_prompt=None):
 
+    gemma_prompt_template = (
+    "<bos><start_of_turn>user\n",
+    "You are a helpful assistant and an expert in function calling.",
+    "A user is gonna ask you a question, you need to extract the arguments to be passed to the function that can answer the question.",
+    "You have access to several functions which are represented in json schemas. Here are the functions:\n{functions}\n",
+    "The user's question below:\n{question}\n",
+    "If you are requested to use a function, you ALWAYS output functions in a valid json schema. You must answer the user's question by replying VALID JSON.",
+    "<end_of_turn>\n",
+    "<start_of_turn>model\n",
+    )
+
     functions_str = "\n".join([str(function) for function in functions])
-    return gemma_prompt.format(function=functions_str, prompt=user_prompt)
+    gemma_prompt_template = ' '.join(gemma_prompt_template)
+    return gemma_prompt_template.format(functions=functions_str, question=user_prompt)
 
     system_prompt = format_system_prompt(system_prompt, functions)
 
