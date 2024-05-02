@@ -218,7 +218,7 @@ def repeat_pattern(pattern, num_repeats=None):
     elif isinstance(num_repeats, int):
         result = f"({pattern}){{{num_repeats}}}"
     elif isinstance(num_repeats, Union[list, tuple, set]) and len(num_repeats) == 2:
-        return re.compile(f"({pattern}){{{num_repeats[0]},{num_repeats[1]}}}")
+        return f"({pattern}){{{num_repeats[0]},{num_repeats[1]}}}"
     return result
 
 
