@@ -107,30 +107,6 @@ class OutlinesHandler(BaseHandler):
         metadata = {"input_tokens": 0, "output_tokens": 0, "latency": latency}
         return result, metadata
 
-        # # Format the prompt with the functions the model has access to
-        # functions = language_specific_pre_processing(functions, test_category, False)
-        # prompt = augment_prompt_by_languge(prompt, test_category)
-        # user_prompt, system_prompt = self._format_prompt_func(prompt, functions)
-        # prompt = tokenizer_encode(self.tokenizer, user_prompt, system_prompt, False)
-
-        # # Tokenize text
-        # output_texts = generator(prompt, rng=self.rng, max_tokens=150)
-
-
-        # # Decode text
-        # output_texts = self.tokenizer.decode(output_tokens, skip_special_tokens=True)
-        # # assert len(self.tokenizer(output_texts, add_special_tokens=False)["input_ids"]) == n_output_tokens
-
-        # # Record info
-        # latency = time.time() - start
-        # metadata = {}
-        # # metadata = {
-        # #     "input_tokens": n_input_tokens,
-        # #     "output_tokens": n_output_tokens,
-        # #     "latency": latency
-        # #     }
-        # return output_texts, metadata
-
     def decode_execute(self, result):
 
         # Parse result
@@ -154,6 +130,26 @@ class OutlinesHandler(BaseHandler):
                 )
         return execution_list
 
+    def write(self, result, file_to_open):
+        # if file_to_open[:-12] != "_result.json":
+        #     file_to_open = file_to_open.replace(".json", "_result.json")
+
+        if not os.path.exists("./result"):
+            os.mkdir("./result")
+        if not os.path.exists("./result/" + self.model_name.replace("/", "_")):
+            os.mkdir("./result/" + self.model_name.replace("/", "_"))
+        with open("./result/" + self.model_name.replace("/", "_") + "/" + file_to_open, "a+") as f:
+            f.write(json.dumps(result) + "\n")
+
+    def load_result(self, test_category):
+        # This method is used to load the result from the file.
+        result_list = []
+        with open(
+            f"./result/{self.model_name.replace('/', '_')}/gorilla_openfunctions_v1_test_{test_category}_result.json"
+        ) as f:
+            for line in f:
+                result_list.append(json.loads(line))
+        return result_list
 
 
 #####################################################################
