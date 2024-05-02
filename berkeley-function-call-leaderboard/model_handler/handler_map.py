@@ -1,5 +1,7 @@
+from model_handler.arctic_handler import ArcticHandler
 from model_handler.claude_fc_handler import ClaudeFCHandler
 from model_handler.claude_prompt_handler import ClaudePromptingHandler
+from model_handler.cohere_handler import CohereHandler
 from model_handler.databricks_handler import DatabricksHandler
 from model_handler.deepseek_handler import DeepseekHandler
 from model_handler.firework_ai_handler import FireworkAIHandler
@@ -14,8 +16,7 @@ from model_handler.llama_handler import LlamaHandler
 from model_handler.mistral_handler import MistralHandler
 from model_handler.nexus_handler import NexusHandler
 from model_handler.oss_handler import OSSHandler
-from model_handler.cohere_handler import CohereHandler
-from model_handler.arctic_handler import ArcticHandler
+from model_handler.outlines_handler import OutlinesHandler
 
 handler_map = {
     "gorilla-openfunctions-v0": GorillaHandler,
@@ -67,4 +68,5 @@ handler_map = {
     "command-r-plus-FC-optimized": CohereHandler,
     "command-r-plus-optimized": CohereHandler,
     "snowflake/arctic": ArcticHandler,
+    "mistralai/Mistral-7B-v0.1": OutlinesHandler,
 }
