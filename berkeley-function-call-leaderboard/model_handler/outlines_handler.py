@@ -87,10 +87,14 @@ class OutlinesHandler(BaseHandler):
         start = time.time()
 
         # Initialize generator
-        if self.structured:
-            generator = get_regex_generator(functions, self.model, None, self.n_tool_calls, test_category)
-        else:
-            generator =  get_text_generator(self.model)
+        try:
+            if self.structured:
+                generator = get_regex_generator(functions, self.model, None, self.n_tool_calls, test_category)
+            else:
+                generator =  get_text_generator(self.model)
+        except:
+            result = '[error.message(error="Error occurred")]'
+            return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0}
 
         # Format prompt
         apply_chat_template = False
@@ -98,9 +102,13 @@ class OutlinesHandler(BaseHandler):
         prompt = format_prompt(user_prompt, self.tokenizer, functions, apply_chat_template)
 
         # Generate text with or without structure
-        result = generator(prompt, rng=self.rng, max_tokens=self.max_tokens)
-        if self.structured:
-            result = format_result(result)
+        try:
+            result = generator(prompt, rng=self.rng, max_tokens=self.max_tokens)
+            if self.structured:
+                result = format_result(result)
+        except:
+            result = '[error.message(error="Error occurred")]'
+            return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0}
 
         # Record info
         latency = time.time() - start
