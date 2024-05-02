@@ -327,10 +327,16 @@ MODEL_METADATA_MAPPING = {
         "apache-2.0",
     ],
     "mistralai/Mistral-7B-v0.1": [
-        "MistralAI (outlines)",
+        "MistralAI (Outlines)",
         "https://huggingface.co/mistralai/Mistral-7B-v0.1",
         "MistralAI",
         "apache-2.0",
+    ],
+    "google/gemma-7b-it": [
+        "Gemma (Outlines)",
+        "https://huggingface.co/google/gemma-7b-it",
+        "Google",
+        "gemma",
     ]
 }
 
