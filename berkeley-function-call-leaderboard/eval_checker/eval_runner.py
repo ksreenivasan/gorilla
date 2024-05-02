@@ -2,11 +2,11 @@ import sys
 
 sys.path.append("../")
 
+import argparse
+
 from checker import ast_checker, exec_checker, executable_checker_rest
 from eval_runner_helper import *
 from tqdm import tqdm
-import argparse
-
 
 # NOTE: This file should be run in the `eval_checker` directory
 
@@ -282,6 +282,7 @@ def runner(model_names, test_categories, api_sanity_check):
     for subdir in subdirs:
 
         model_name = subdir.split(INPUT_PATH)[1]
+        model_name = model_name.replace("_", "/")
         if model_names is not None and model_name not in model_names:
             continue
 
