@@ -48,7 +48,7 @@ class OutlinesHandler(BaseHandler):
         temperature=0.7,
         top_p=1,
         max_tokens=150,
-        structured: bool = False,
+        structured: bool = True,
         tokenizer_name = None,
         n_tool_calls=1,
         seed=42) -> None:
@@ -94,22 +94,27 @@ class OutlinesHandler(BaseHandler):
                 generator = get_regex_generator(functions, self.model, None, self.n_tool_calls, test_category)
             else:
                 generator =  get_text_generator(self.model)
-        except:
-            result = '[error.message(error="Error occurred")]'
+        except Exception as e:
+            result = '[error.message(error="{str(e)}")]'
+            print(f"An error occurred: {str(e)}")
             return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0}
 
         # Format prompt
-        apply_chat_template = False
+        # system_prompt = get_system_prompt(None, functions)
+        # user_prompt = prompt
+        # prompt = use_chat_template(self.tokenizer, user_prompt, system_prompt)
         user_prompt = prompt
-        prompt = format_prompt(user_prompt, self.tokenizer, functions, apply_chat_template)
+        apply_chat_template = False
+        get_gemma_prompt(user_prompt, self.tokenizer, functions, apply_chat_template)
 
         # Generate text with or without structure
         try:
             result = generator(prompt, rng=self.rng, max_tokens=self.max_tokens)
             if self.structured:
                 result = format_result(result)
-        except:
-            result = '[error.message(error="Error occurred")]'
+        except Exception as e:
+            result = '[error.message(error="{str(e)}")]'
+            print(f"An error occurred: {str(e)}")
             return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0}
 
         # Record info
@@ -238,7 +243,7 @@ def all_functions_to_regex_str(functions, test_category, whitespace_pattern, n_t
     function_regex = reduce(regex_or, function_regexes)
 
     # Allow multiple function calls or zero function calls
-    function_regex = repeat_pattern(function_regex, n_tool_calls)
+    # function_regex = repeat_pattern(function_regex, n_tool_calls)
 
     if verbose >= 2:
         print(function_regex)
@@ -257,7 +262,7 @@ def _init_llm(model_name):
         device_map="auto",
         trust_remote_code=True,
         torch_dtype=torch.bfloat16,
-        token="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",
+        token="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",
         )
     return llm
 
@@ -266,7 +271,7 @@ def _init_tokenizer(tokenizer_name):
     tokenizer = AutoTokenizer.from_pretrained(
         tokenizer_name,
         trust_remote_code=True,
-        token="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",
+        token="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",
         )
     return tokenizer
 
@@ -300,7 +305,7 @@ def get_text_generator(model):
 #####################################################################
 
 
-def format_system_prompt(system_prompt, functions):
+def get_system_prompt(system_prompt, functions):
 
     # Format functions as string
     functions_str = "\n".join([str(function) for function in functions])
@@ -322,7 +327,7 @@ def format_system_prompt(system_prompt, functions):
         system_prompt = system_prompt.format(functions=functions_str)
     return system_prompt
 
-def format_prompt(user_prompt, tokenizer, functions, apply_chat_template, system_prompt=None):
+def get_gemma_prompt(user_prompt, tokenizer, functions, apply_chat_template, system_prompt=None):
 
     gemma_prompt_template = (
     "<bos><start_of_turn>user\n",
@@ -351,41 +356,33 @@ def format_prompt(user_prompt, tokenizer, functions, apply_chat_template, system
     return prompt
 
 
-# def format_chat_template(tokenizer, user_prompt, system_prompt, tokenize=False, template=None):
-#     """Tokenize the text with apply_tool_use_template, apply_chat_template, or with
-#     no template.
+def use_chat_template(tokenizer, user_prompt, system_prompt, template=None):
+    """Format the text with apply_tool_use_template, apply_chat_template, or with
+    no template.
 
-#     If template is `None`, then tokenize first with tool use template, then chat template, and
-#     then no template (in this order), if the tokenizer has these features. You can override
-#     this by setting template to `tool_use` or `chat`.
-#     """
+    If template is `None`, then tokenize first with tool use template, then chat template, and
+    then no template (in this order), if the tokenizer has these features. You can override
+    this by setting template to `tool_use` or `chat`.
+    """
 
-#     if template == "tool_use" or (hasattr(tokenizer, "apply_tool_use_template") and template is None):
-#         messages = [
-#             {"role": "system", "content": system_prompt},
-#             {"role": "user", "content": user_prompt},
-#             ]
-#         tools = None
-#         inputs = tokenizer.apply_chat_template(
-#             messages, tools=tools, tokenize=tokenize, add_generation_prompt=True,
-#             return_tensors="pt", return_dict=True)
-#     elif template == "chat" or (hasattr(tokenizer, "apply_chat_template") and template is None):
-#         messages = [
-#             # {"role": "system", "content": system_prompt},
-#             {"role": "user", "content": user_prompt},
-#             ]
-#         inputs = tokenizer.apply_chat_template(
-#             messages, tokenize=tokenize, add_generation_prompt=True, return_tensors="pt", return_dict=True)
-#     else:
-#         messages = [f"SYSTEM: {system_prompt}\nUSER: {user_prompt}\nASSISTANT: "]
-#         inputs = messages
-#         if tokenize:
-#             inputs = tokenizer(messages, return_tensors="pt")
+    if template == "tool_use" or (hasattr(tokenizer, "apply_tool_use_template") and template is None):
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+            ]
+        tools = None
+        inputs = tokenizer.apply_chat_template(messages, tools=tools, tokenize=False, add_generation_prompt=True)
+    elif template == "chat" or (hasattr(tokenizer, "apply_chat_template") and template is None):
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+            ]
+        inputs = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    else:
+        messages = f"SYSTEM: {system_prompt}\nUSER: {user_prompt}\nASSISTANT: "
+        inputs = messages
 
-#     if tokenize:
-#         device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-#         inputs = inputs.to(device)
-#     return inputs
+    return inputs
 
 
 def format_result(result):
