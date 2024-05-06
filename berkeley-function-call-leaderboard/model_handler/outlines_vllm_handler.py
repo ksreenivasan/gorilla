@@ -30,6 +30,13 @@ from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_si
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from openai import OpenAI
 
+def format_result(self, function_name, result):
+    # This method is used to format the result in a standard way.
+    args_string = ', '.join([f"{key}='{value}'" if isinstance(value, str) else f"{key}={value}" for key, value in result.items()])
+    # Creating the output string with the function name and arguments
+    output_string = f'[{function_name}({args_string})]'
+    return output_string
+
 
 class OutlinesVllmHandler(BaseHandler):
 
@@ -66,11 +73,11 @@ class OutlinesVllmHandler(BaseHandler):
             functions = [functions]
 
         # Prompt
-        regex_str, tool_schema = tool_to_regex(tools)
+        regex_str, tool_schema = tool_to_regex(functions)
         system_prompt = get_system_prompt(tool_schema)
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_query},
+            {"role": "user", "content": prompt},
             ]
 
         # Maybe guided
@@ -81,15 +88,17 @@ class OutlinesVllmHandler(BaseHandler):
         # Start timer
         start = time.time()
 
-        # Initialize generator
+        # Generate text
         completion = client.chat.completions.create(
             model="databricks/dbrx-instruct",
             messages=messages,
             extra_body=extra_body,
             )
 
-    raw_text = completion.choices[0].message.content
-
+        # Parse output
+        raw_text = completion.choices[0].message.content
+        tool = json.loads(raw_text)
+        result = format_result(tool["tool_name"], tool["tool_arguments"])
 
         # Record info
         latency = time.time() - start
