@@ -65,15 +65,21 @@ class OutlinesVllmHandler(BaseHandler):
         if not isinstance(functions, list):
             functions = [functions]
 
-        # Start timer
-        start = time.time()
+        # Prompt
+        regex_str, tool_schema = tool_to_regex(tools)
+        system_prompt = get_system_prompt(tool_schema)
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_query},
+            ]
 
+        # Maybe guided
         extra_body = {}
         if self.guided:
-            regex_str, tool_schema = tool_to_regex(tools)
-
-            messages =
             extra_body=dict(guided_regex=regex_str, guided_decoding_backend="outlines")
+
+        # Start timer
+        start = time.time()
 
         # Initialize generator
         completion = client.chat.completions.create(
@@ -82,7 +88,7 @@ class OutlinesVllmHandler(BaseHandler):
             extra_body=extra_body,
             )
 
-raw_text = completion.choices[0].message.content
+    raw_text = completion.choices[0].message.content
 
 
         # Record info
@@ -254,84 +260,56 @@ def get_text_generator(model):
 #####################################################################
 
 
-def get_system_prompt(system_prompt, functions):
+def get_system_prompt(
+    tool_schema,
+    tool_list_start="<tool>",
+    tool_list_end="</tools>",
+    tool_call_start="<tool_call>",
+    tool_call_end="</tool_call>",
+    tool_response_start="<tool_response>",
+    tool_response_end="</tool_response>"
+    ):
 
-    # Format functions as string
-    functions_str = "\n".join([str(function) for function in functions])
-
-    # Setup system prompt
-    if system_prompt is None:
-        system_prompt_tuple = (
-            "You are a helpful assistant and an expert in function calling.",
-            "You have access to several functions which are represented in json schemas.",
-            "Here are the functions:\n{functions}\n",
-            "If you are requested to use a function, you ALWAYS output functions in a valid json schema."
-            "If there are no relevant functions, please ask for more information before making the function call."
-            )
-        system_prompt = ' '.join(system_prompt_tuple)
-        system_prompt = system_prompt.format(functions=functions_str)
-    elif system_prompt is False:
-        system_prompt = ""
-    else: # system_prompt is a string with `{functions}` in it
-        system_prompt = system_prompt.format(functions=functions_str)
-    return system_prompt
-
-def get_gemma_prompt(user_prompt, tokenizer, functions, apply_chat_template, system_prompt=None):
-
-    gemma_prompt_template = (
-    "<bos><start_of_turn>user\n",
-    "You are a helpful assistant and an expert in function calling.",
-    "A user is gonna ask you a question, you need to extract the arguments to be passed to the function that can answer the question.",
-    "You have access to several functions which are represented in json schemas. Here are the functions:\n{functions}\n",
-    "The user's question below:\n{question}\n",
-    "If you are requested to use a function, you ALWAYS output functions in a valid json schema. You must answer the user's question by replying VALID JSON.",
-    "<end_of_turn>\n",
-    "<start_of_turn>model\n",
-    )
-
-    functions_str = "\n".join([str(function) for function in functions])
-    gemma_prompt_template = ' '.join(gemma_prompt_template)
-    return gemma_prompt_template.format(functions=functions_str, question=user_prompt)
-
-    system_prompt = format_system_prompt(system_prompt, functions)
-
-    # Setup chat template
-    if apply_chat_template:
-        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
-        prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    else:
-        prompt = f"{system_prompt}\n{user_prompt}"
-
-    return prompt
+    system_prompt = """You are a function calling AI model. Your job is to answer the user's questions and you may call one or more functions to do this.
 
 
-def use_chat_template(tokenizer, user_prompt, system_prompt, template=None):
-    """Format the text with apply_tool_use_template, apply_chat_template, or with
-    no template.
+    Please use your own judgment as to whether or not you should call a function. In particular, you must follow these guiding principles:
+    1. You may call one or more functions to assist with the user query.
+    2. You do not need to call a function. If none of the functions can be used to answer the user's question, please do not make the function call.
+    3. Don't make assumptions about what values to plug into functions. If you are missing the parameters to make a function call, please ask the user for the parameters.
+    4. You may assume the user has implemented the function themselves.
+    5. You may assume the user will call the function on their own. You should NOT ask the user to call the function and let you know the result; they will do this on their own.
 
-    If template is `None`, then tokenize first with tool use template, then chat template, and
-    then no template (in this order), if the tokenizer has these features. You can override
-    this by setting template to `tool_use` or `chat`.
+
+    You can only call functions according the following formatting rules:
+    Rule 1: All the functions you have access to are contained within {tool_list_start}{tool_list_end} XML tags. You cannot use any functions that are not listed between these tags.
+
+    Rule 2: For each function call return a json object (using quotes) with function name and arguments within {tool_call_start}\n{{ }}\n{tool_call_end} XML tags as follows:
+    * With arguments:
+    {tool_call_start}\n{{"name": "function_name", "arguments": {{"argument_1_name": "value", "argument_2_name": "value"}} }}\n{tool_call_end}
+    * Without arguments:
+    {tool_call_start}\n{{ "name": "function_name", "arguments": {{}} }}\n{tool_call_end}
+    In between {tool_call_start} and{tool_call_end} tags, you MUST respond in a valid JSON schema.
+    In between the {tool_call_start} and {tool_call_end} tags you MUST only write in json; no other text is allowed.
+
+    Rule 3: If user decides to run the function, they will output the result of the function call between the {tool_response_start} and {tool_response_start} tags. If it answers the user's question, you should incorporate the output of the function in your answer.
+
+
+    Here are the tools available to you:
+    {tool_list_start}\n{tool_schema}\n{tool_list_end}
+
+    Remember, don't make assumptions about what values to plug into functions. If you are missing the parameters to make a function call, please ask the user for the parameters. Do not be afraid to ask.
     """
 
-    if template == "tool_use" or (hasattr(tokenizer, "apply_tool_use_template") and template is None):
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-            ]
-        tools = None
-        inputs = tokenizer.apply_chat_template(messages, tools=tools, tokenize=False, add_generation_prompt=True)
-    elif template == "chat" or (hasattr(tokenizer, "apply_chat_template") and template is None):
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-            ]
-        inputs = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    else:
-        messages = f"SYSTEM: {system_prompt}\nUSER: {user_prompt}\nASSISTANT: "
-        inputs = messages
-
-    return inputs
+    return system_prompt.format(
+        tool_list_start=tool_list_start,
+        tool_list_end=tool_list_end,
+        tool_call_start=tool_call_start,
+        tool_call_end=tool_call_end,
+        tool_response_start=tool_response_start,
+        tool_response_end=tool_response_end,
+        tool_schema=tool_schema,
+        )
 
 
 def format_result(result):
