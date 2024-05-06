@@ -30,13 +30,6 @@ from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_si
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from openai import OpenAI
 
-def format_result(self, function_name, result):
-    # This method is used to format the result in a standard way.
-    args_string = ', '.join([f"{key}='{value}'" if isinstance(value, str) else f"{key}={value}" for key, value in result.items()])
-    # Creating the output string with the function name and arguments
-    output_string = f'[{function_name}({args_string})]'
-    return output_string
-
 
 class OutlinesVllmHandler(BaseHandler):
 
@@ -98,7 +91,7 @@ class OutlinesVllmHandler(BaseHandler):
         # Parse output
         raw_text = completion.choices[0].message.content
         tool = json.loads(raw_text)
-        result = format_result(tool["tool_name"], tool["tool_arguments"])
+        result = format_result(tool)
 
         # Record info
         latency = time.time() - start
@@ -322,7 +315,7 @@ def get_system_prompt(
 
 
 def format_result(result):
-    args, function_name = result["arguments"], result["function"]
+    args, function_name = result["tool_arguments"], result["tool_name"]
     args_string = ', '.join([f"{key}='{value}'" if isinstance(value, str) else f"{key}={value}" for key, value in args.items()])
     output_string = f'[{function_name}({args_string})]'
     return output_string
