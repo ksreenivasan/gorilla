@@ -28,6 +28,7 @@ from model_handler.utils import (
 from outlines import generate, models
 from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_signature
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from openai import OpenAI
 
 
 class OutlinesHandler(BaseHandler):
@@ -42,11 +43,11 @@ class OutlinesHandler(BaseHandler):
         n_tool_calls=1,
         seed=42) -> None:
 
-        self.model_style = ModelStyle.Outlines
 
-        self.llm = None
-        self.tokenizer = None
-        self.model = None
+        # self.base_url = os.getenv("BASE_URL")
+        # self.api_key = os.getenv("API_KEY")
+        self.client = OpenAI(base_url="http://localhost:8000/v1", api_key="-")
+        self.model_style = ModelStyle.Outlines
 
         self.structured = structured
         self.n_tool_calls = n_tool_calls
@@ -60,12 +61,6 @@ class OutlinesHandler(BaseHandler):
 
     def inference(self, prompt, functions, test_category):
 
-        # Only initialize model and tokenizer once
-        if self.llm is None or self.tokenizer is None or self.model is None:
-            self.llm = _init_llm(self.model_name)
-            self.tokenizer = _init_tokenizer(self.tokenizer_name)
-            self.model = models.Transformers(self.llm, self.tokenizer)
-
         # Cast to list
         if not isinstance(functions, list):
             functions = [functions]
@@ -74,33 +69,14 @@ class OutlinesHandler(BaseHandler):
         start = time.time()
 
         # Initialize generator
-        try:
-            if self.structured:
-                generator = get_regex_generator(functions, self.model, None, self.n_tool_calls, test_category)
-            else:
-                generator =  get_text_generator(self.model)
-        except Exception as e:
-            result = '[error.message(error="{str(e)}")]'
-            print(f"An error occurred: {str(e)}")
-            return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0}
+        completion = client.chat.completions.create(
+        model="databricks/dbrx-instruct",
+        messages=messages,
+        #extra_body=dict(guided_regex=TEST_REGEX, guided_decoding_backend="outlines"),
+        )
 
-        # Format prompt
-        # system_prompt = get_system_prompt(None, functions)
-        # user_prompt = prompt
-        # prompt = use_chat_template(self.tokenizer, user_prompt, system_prompt)
-        user_prompt = prompt
-        apply_chat_template = False
-        get_gemma_prompt(user_prompt, self.tokenizer, functions, apply_chat_template)
+raw_text = completion.choices[0].message.content
 
-        # Generate text with or without structure
-        try:
-            result = generator(prompt, rng=self.rng, max_tokens=self.max_tokens)
-            if self.structured:
-                result = format_result(result)
-        except Exception as e:
-            result = '[error.message(error="{str(e)}")]'
-            print(f"An error occurred: {str(e)}")
-            return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0}
 
         # Record info
         latency = time.time() - start
