@@ -31,7 +31,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from openai import OpenAI
 
 
-class OutlinesHandler(BaseHandler):
+class OutlinesVllmHandler(BaseHandler):
 
     def __init__(
         self,
@@ -39,7 +39,7 @@ class OutlinesHandler(BaseHandler):
         temperature=0.7,
         top_p=1,
         max_tokens=150,
-        structured: bool = True,
+        guided: bool = True,
         n_tool_calls=1,
         seed=42) -> None:
 
@@ -49,7 +49,7 @@ class OutlinesHandler(BaseHandler):
         self.client = OpenAI(base_url="http://localhost:8000/v1", api_key="-")
         self.model_style = ModelStyle.Outlines
 
-        self.structured = structured
+        self.guided = guided
         self.n_tool_calls = n_tool_calls
 
         self.seed = seed
@@ -68,12 +68,17 @@ class OutlinesHandler(BaseHandler):
         # Start timer
         start = time.time()
 
+        extra_body = {}
+        if self.guided:
+            messages =
+            extra_body=dict(guided_regex=regex_str, guided_decoding_backend="outlines")
+
         # Initialize generator
         completion = client.chat.completions.create(
-        model="databricks/dbrx-instruct",
-        messages=messages,
-        #extra_body=dict(guided_regex=TEST_REGEX, guided_decoding_backend="outlines"),
-        )
+            model="databricks/dbrx-instruct",
+            messages=messages,
+            extra_body=extra_body,
+            )
 
 raw_text = completion.choices[0].message.content
 
