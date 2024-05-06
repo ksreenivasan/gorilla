@@ -70,6 +70,8 @@ class OutlinesVllmHandler(BaseHandler):
 
         extra_body = {}
         if self.guided:
+            regex_str, tool_schema = tool_to_regex(tools)
+
             messages =
             extra_body=dict(guided_regex=regex_str, guided_decoding_backend="outlines")
 
@@ -153,68 +155,49 @@ def bfcl_function_to_schema(function, test_category):
     return schema
 
 
-def function_to_regex(function, test_category, whitespace_pattern, verbose):
-
-    if isinstance(function, dict) and list(function.keys()) == ['name', 'description', 'parameters']:
-        schema = bfcl_function_to_schema(function, test_category)
-    elif callable(function):
-        schema = json.dumps(get_schema_from_signature(function)) # get_schema_from_signature is from the outlines library
-    else:
-        raise TypeError
-    if verbose >= 1:
-        print(schema)
-
-    schema_regex = build_regex_from_schema(schema.strip(), whitespace_pattern)
-    function_regex = f'{{"function": "{function["name"]}", "arguments": {schema_regex}}}'
-
-    if verbose >= 2:
-        print(function_regex)
-
-    return function_regex
-
-
 def regex_or(pattern1, pattern2):
     return f"(?:{pattern1}|{pattern2})"
 
 
-def repeat_pattern(pattern, num_repeats=None):
-    """Repeat the regex pattern `pattern` `num_repeats` times.
-
-    If `num_repeats` is `None`, allow the pattern to be repeated an unlimited number of times.
-    If `num_repeats` is an integer, repeat the pattern exactly `num` times.
-    If `num_repeats` is an iterable with length two, repeat the pattern anywhere between `num[0]` and `num[1]` times, inclusive.
+def sometime_guide(regex_pattern, start_guided_pattern="<tool_call>", end_guided_pattern="</tool_call>"):
     """
-    if num_repeats is None:
-        result = f"({pattern})*"
-    elif isinstance(num_repeats, int):
-        result = f"({pattern}){{{num_repeats}}}"
-    elif isinstance(num_repeats, Union[list, tuple, set]) and len(num_repeats) == 2:
-        return f"({pattern}){{{num_repeats[0]},{num_repeats[1]}}}"
-    return result
-
-
-def all_functions_to_regex_str(functions, test_category, whitespace_pattern, n_tool_calls=None, verbose=0):
+    Only do guided generation sometimes, in between start_word and end_word.
     """
+    return f".*?(?={start_guided_pattern}){start_guided_pattern}({regex_pattern}).*?(?={end_guided_pattern}){end_guided_pattern}.*"
 
-    Specify the number of tools calls you can make.
-    If `n_tool_calls` is `None`, allow the tool(s) to be repeated an unlimited number of times.
-    If `n_tool_calls` is an integer, use exactly `n_tool_calls` tools.
-    If `n_tool_calls` is an iterable with length two, repeat the pattern anywhere between `n_tool_calls[0]` and `n_tool_calls[1]` times, inclusive.
-    """
 
-    # Get a separate regex for each individual function
-    function_regexes = [function_to_regex(function, test_category, whitespace_pattern, verbose) for function in functions]
+def is_bfcl(tool):
+    return isinstance(tool, dict) and list(tool.keys()) == ['name', 'description', 'parameters']
 
-    # Create a single regex that allows for any of the possible functions to be called
-    function_regex = reduce(regex_or, function_regexes)
 
-    # Allow multiple function calls or zero function calls
-    # function_regex = repeat_pattern(function_regex, n_tool_calls)
+def tool_to_regex(tool, whitespace_pattern=None, test_category=None):
 
-    if verbose >= 2:
-        print(function_regex)
+    if isinstance(tool, list):
+        values = [tool_to_regex(_tool, whitespace_pattern=whitespace_pattern, test_category=test_category) for _tool in tool]
+        regex_strs = [v[0] for v in values]
+        regex_str = reduce(regex_or, regex_strs)
+        schema_strs = [v[1] for v in values]
+        schema_str = "\n".join(schema_strs)
+    elif is_bfcl(tool):
+        schema_str = bfcl_function_to_schema(tool, test_category).strip()
+        schema_regex = build_regex_from_schema(schema_str, whitespace_pattern)
+        regex_str = f'{{"tool_name": "{tool["name"]}", "tool_arguments": {schema_regex}}}'
+    elif isinstance(tool, type(BaseModel)):
+        schema_json = tool.model_json_schema()
+        schema_str = json.dumps(schema_json).strip()
+        schema_regex = build_regex_from_schema(schema_str, whitespace_pattern)
+        regex_str = f'{{"tool_name": "{schema_json["title"]}", "tool_arguments": {schema_regex}}}'
+    elif callable(tool):
+        schema_json = get_schema_from_signature(tool)
+        schema_str = json.dumps(schema_json).strip()
+        schema_regex = build_regex_from_schema(schema_str, whitespace_pattern)
+        regex_str = f'{{"tool_name": "{tool.__name__}", "tool_arguments": {schema_regex}}}'
+    elif isinstance(tool, str):
+        schema_str = tool.replace("\n", " ").replace("  ", " ").strip()
+        schema_regex = build_regex_from_schema(schema_str, whitespace_pattern)
+        regex_str = f'{{"tool_name": "{json.loads(schema_str)["title"]}", "tool_arguments": {schema_regex}}}'
 
-    return function_regex
+    return regex_str, schema_str
 
 
 #####################################################################
