@@ -1,15 +1,67 @@
-from model_handler.handler import BaseHandler
-from model_handler.model_style import ModelStyle
-from model_handler.utils import language_specific_pre_processing, ast_parse
+import re
+import time
+
 from model_handler.constant import (
+    GORILLA_TO_OPENAPI,
     SYSTEM_PROMPT_FOR_CHAT_MODEL,
     USER_PROMPT_FOR_CHAT_MODEL,
-    GORILLA_TO_OPENAPI,
 )
-import time
+from model_handler.handler import BaseHandler
+from model_handler.model_style import ModelStyle
+from model_handler.utils import ast_parse, language_specific_pre_processing
 from openai import OpenAI
-import re
 
+
+def get_system_prompt(
+    tool_schema,
+    tool_list_start="<tool>",
+    tool_list_end="</tools>",
+    tool_call_start="<tool_call>",
+    tool_call_end="</tool_call>",
+    tool_response_start="<tool_response>",
+    tool_response_end="</tool_response>"
+    ):
+
+    system_prompt = """You are a function calling AI model. Your job is to answer the user's questions and you may call one or more functions to do this.
+
+
+    Please use your own judgment as to whether or not you should call a function. In particular, you must follow these guiding principles:
+    1. You may call one or more functions to assist with the user query. You should call multiple functions when the user asks you to.
+    2. You do not need to call a function. If none of the functions can be used to answer the user's question, please do not make the function call.
+    3. Don't make assumptions about what values to plug into functions. If you are missing the parameters to make a function call, please ask the user for the parameters.
+    4. You may assume the user has implemented the function themselves.
+    5. You may assume the user will call the function on their own. You should NOT ask the user to call the function and let you know the result; they will do this on their own.
+
+
+    You can only call functions according the following formatting rules:
+    Rule 1: All the functions you have access to are contained within {tool_list_start}{tool_list_end} XML tags. You cannot use any functions that are not listed between these tags.
+
+    Rule 2: For each function call return a json object (using quotes) with function name and arguments within {tool_call_start}\n{{ }}\n{tool_call_end} XML tags as follows:
+    * With arguments:
+    {tool_call_start}\n{{"tool_name": "function_name", "tool_arguments": {{"argument_1_name": "value", "argument_2_name": "value"}} }}\n{tool_call_end}
+    * Without arguments:
+    {tool_call_start}\n{{ "tool_name": "function_name", "tool_arguments": {{}} }}\n{tool_call_end}
+    In between {tool_call_start} and{tool_call_end} tags, you MUST respond in a valid JSON schema.
+    In between the {tool_call_start} and {tool_call_end} tags you MUST only write in json; no other text is allowed.
+
+    Rule 3: If user decides to run the function, they will output the result of the function call between the {tool_response_start} and {tool_response_start} tags. If it answers the user's question, you should incorporate the output of the function in your answer.
+
+
+    Here are the tools available to you:
+    {tool_list_start}\n{tool_schema}\n{tool_list_end}
+
+    Remember, don't make assumptions about what values to plug into functions. If you are missing the parameters to make a function call, please ask the user for the parameters. Do not be afraid to ask.
+    """
+
+    return system_prompt.format(
+        tool_list_start=tool_list_start,
+        tool_list_end=tool_list_end,
+        tool_call_start=tool_call_start,
+        tool_call_end=tool_call_end,
+        tool_response_start=tool_response_start,
+        tool_response_end=tool_response_end,
+        tool_schema=tool_schema,
+        )
 
 class DatabricksHandler(BaseHandler):
     def __init__(self, model_name, temperature=0.7, top_p=1, max_tokens=1000) -> None:
@@ -29,16 +81,22 @@ class DatabricksHandler(BaseHandler):
         functions = language_specific_pre_processing(functions, test_category, False)
         if type(functions) is not list:
             functions = [functions]
+        # message = [
+        #     {"role": "system", "content": SYSTEM_PROMPT_FOR_CHAT_MODEL},
+        #     {
+        #         "role": "user",
+        #         "content": "Questions:"
+        #         + USER_PROMPT_FOR_CHAT_MODEL.format(
+        #             user_prompt=prompt, functions=str(functions)
+        #         ),
+        #     },
+        # ]
         message = [
-            {"role": "system", "content": SYSTEM_PROMPT_FOR_CHAT_MODEL},
-            {
-                "role": "user",
-                "content": "Questions:"
-                + USER_PROMPT_FOR_CHAT_MODEL.format(
-                    user_prompt=prompt, functions=str(functions)
-                ),
-            },
+            {"role": "system", "content": get_system_prompt(str(functions))},
+            {"role": "user", "content": prompt},
         ]
+
+        function_input = {"type": "function", "function": functions[0]}
         start_time = time.time()
         response = self.client.chat.completions.create(
             messages=message,
@@ -46,6 +104,7 @@ class DatabricksHandler(BaseHandler):
             temperature=self.temperature,
             max_tokens=self.max_tokens,
             top_p=self.top_p,
+            function=function_input,
         )
         latency = time.time() - start_time
         result = response.choices[0].message.content
