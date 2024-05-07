@@ -47,7 +47,7 @@ class OutlinesHandler(BaseHandler):
         model_name,
         temperature=0.7,
         top_p=1,
-        max_tokens=150,
+        max_tokens=4096,
         structured: bool = True,
         tokenizer_name = None,
         n_tool_calls=1,
@@ -105,7 +105,7 @@ class OutlinesHandler(BaseHandler):
         # prompt = use_chat_template(self.tokenizer, user_prompt, system_prompt)
         user_prompt = prompt
         apply_chat_template = False
-        get_gemma_prompt(user_prompt, self.tokenizer, functions, apply_chat_template)
+        prompt = get_gemma_prompt(user_prompt, self.tokenizer, functions, apply_chat_template)
 
         # Generate text with or without structure
         try:
