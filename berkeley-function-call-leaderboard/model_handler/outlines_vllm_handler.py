@@ -6,7 +6,6 @@ from functools import reduce
 from textwrap import dedent
 from typing import Union
 
-from pydantic import BaseModel
 import torch
 from accelerate import init_empty_weights, load_checkpoint_and_dispatch
 from huggingface_hub import snapshot_download
@@ -26,10 +25,11 @@ from model_handler.utils import (
     convert_to_tool,
     language_specific_pre_processing,
 )
+from openai import OpenAI
 from outlines import generate, models
 from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_signature
+from pydantic import BaseModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from openai import OpenAI
 
 
 class OutlinesVllmHandler(BaseHandler):
@@ -63,8 +63,14 @@ class OutlinesVllmHandler(BaseHandler):
         if not isinstance(functions, list):
             functions = [functions]
 
+
         # Prompt
-        regex_str, tool_schema = tool_to_regex(functions)
+        try:
+            regex_str, tool_schema = tool_to_regex(functions)
+        except Exception as e:
+            result = f'[error.message(error="{str(e)}")]'
+            print(f"An error occurred: {str(e)}")
+            return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0}
         system_prompt = get_system_prompt(tool_schema)
         messages = [
             {"role": "system", "content": system_prompt},
