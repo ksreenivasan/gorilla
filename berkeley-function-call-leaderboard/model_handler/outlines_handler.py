@@ -93,7 +93,7 @@ class OutlinesHandler(BaseHandler):
             else:
                 generator =  get_text_generator(self.model)
         except Exception as e:
-            result = '[error.message(error="{str(e)}")]'
+            result = f'[error.message(error="{str(e)}")]'
             print(f"An error occurred: {str(e)}")
             return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0}
 
