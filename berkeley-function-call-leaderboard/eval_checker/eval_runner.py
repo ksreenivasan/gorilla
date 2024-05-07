@@ -276,6 +276,7 @@ def runner(model_names, test_categories, api_sanity_check):
     for subdir in subdirs:
 
         model_name = subdir.split(INPUT_PATH)[1]
+
         if model_names is not None and model_name not in model_names:
             continue
 

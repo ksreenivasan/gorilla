@@ -29,7 +29,13 @@ class BaseHandler:
         if not os.path.exists("./result"):
             os.mkdir("./result")
         if not os.path.exists("./result/" + self.model_name):
-            os.mkdir("./result/" + self.model_name)
+            # model_name might have subdirs if it is a HF path
+            curr_path = "./result"
+            for subdir in self.model_name.split("/"):
+                if not os.path.exists(f"{curr_path}/{subdir}"):
+                    os.mkdir(f"{curr_path}/{subdir}")
+                    curr_path = f"{curr_path}/{subdir}"
+            # os.mkdir("./result/" + self.model_name)
         with open(
             "./result/"
             + self.model_name

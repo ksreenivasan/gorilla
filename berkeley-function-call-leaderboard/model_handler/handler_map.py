@@ -13,6 +13,7 @@ from model_handler.hermes_handler import HermesHandler
 from model_handler.mistral_handler import MistralHandler
 from model_handler.nexus_handler import NexusHandler
 from model_handler.oss_handler import OSSHandler
+from model_handler.generic_vllm_handler import GenericVLLMHandler
 
 handler_map = {
     "gorilla-openfunctions-v0": GorillaHandler,
@@ -57,4 +58,5 @@ handler_map = {
     "databricks-dbrx-instruct": DatabricksHandler,
     "databricks-dbrx-instruct-FC": DatabricksHandler,
     "NousResearch/Hermes-2-Pro-Mistral-7B": HermesHandler,
+    "generic-vllm-model": GenericVLLMHandler,
 }
