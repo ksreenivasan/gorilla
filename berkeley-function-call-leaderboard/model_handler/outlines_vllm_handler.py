@@ -6,6 +6,7 @@ from functools import reduce
 from textwrap import dedent
 from typing import Union
 
+from pydantic import BaseModel
 import torch
 from accelerate import init_empty_weights, load_checkpoint_and_dispatch
 from huggingface_hub import snapshot_download
@@ -43,9 +44,6 @@ class OutlinesVllmHandler(BaseHandler):
         n_tool_calls=1,
         seed=42) -> None:
 
-
-        # self.base_url = os.getenv("BASE_URL")
-        # self.api_key = os.getenv("API_KEY")
         self.client = OpenAI(base_url="http://localhost:8000/v1", api_key="-")
         self.model_style = ModelStyle.Outlines
 
@@ -82,16 +80,16 @@ class OutlinesVllmHandler(BaseHandler):
         start = time.time()
 
         # Generate text
-        completion = client.chat.completions.create(
+        completion = self.client.chat.completions.create(
             model="databricks/dbrx-instruct",
             messages=messages,
             extra_body=extra_body,
             )
 
         # Parse output
-        raw_text = completion.choices[0].message.content
-        tool = json.loads(raw_text)
-        result = format_result(tool)
+        text = completion.choices[0].message.content
+        tools = parse_tool(text)
+        result = bfcl_format(tools)
 
         # Record info
         latency = time.time() - start
@@ -169,7 +167,7 @@ def regex_or(pattern1, pattern2):
 
 def sometime_guide(regex_pattern, start_guided_pattern="<tool_call>", end_guided_pattern="</tool_call>"):
     """
-    Only do guided generation sometimes, in between start_word and end_word.
+    Only do guided generation sometimes, i.e. only force us to output according to the regex pattern in between start_word and end_word.
     """
     return f".*?(?={start_guided_pattern}){start_guided_pattern}({regex_pattern}).*?(?={end_guided_pattern}){end_guided_pattern}.*"
 
@@ -178,13 +176,48 @@ def is_bfcl(tool):
     return isinstance(tool, dict) and list(tool.keys()) == ['name', 'description', 'parameters']
 
 
-def tool_to_regex(tool, whitespace_pattern=None, test_category=None):
+def repeat_regex_pattern(pattern, num_repeats, sep="\\n"):
+    """Repeat the regex pattern `pattern` `num_repeats` times.
+
+    If `num_repeats` is `None`, allow the pattern to be repeated an unlimited number of times.
+    If `num_repeats` is an integer, repeat the pattern exactly `num` times.
+    If `num_repeats` is an iterable with length two, repeat the pattern anywhere between `num[0]` and `num[1]` times, inclusive.
+    """
+
+    if num_repeats is None:
+        min_repetitions = 0
+        max_repetitions = None
+    elif isinstance(num_repeats, int):
+        min_repetitions = max_repetitions = num_repeats
+    elif isinstance(num_repeats, Union[list, tuple, set]) and len(num_repeats) == 2:
+        min_repetitions = num_repeats[0]
+        max_repetitions = num_repeats[1]
+
+    if max_repetitions is None:
+        regex_str = f'({pattern}{sep}){{{min_repetitions},}}'
+    else:
+        regex_str = f'({pattern}{sep}){{{min_repetitions},{max_repetitions}}}'
+
+    return regex_str
+
+
+def tool_to_regex(
+    tool,
+    n_tool_calls=1,
+    start_guided_pattern="<tool_call>",
+    end_guided_pattern="</tool_call>",
+    sometimes=False,
+    whitespace_pattern=None,
+    test_category=None,
+    ):
 
     if isinstance(tool, list):
-        values = [tool_to_regex(_tool, whitespace_pattern=whitespace_pattern, test_category=test_category) for _tool in tool]
-        regex_strs = [v[0] for v in values]
+        values = [
+            tool_to_regex(_tool, n_tool_calls=n_tool_calls, start_guided_pattern=start_guided_pattern, end_guided_pattern=end_guided_pattern, sometimes=sometimes, whitespace_pattern=whitespace_pattern, test_category=test_category,)
+            for _tool in tool
+            ]
+        regex_strs, schema_strs = [v[0] for v in values], [v[1] for v in values]
         regex_str = reduce(regex_or, regex_strs)
-        schema_strs = [v[1] for v in values]
         schema_str = "\n".join(schema_strs)
     elif is_bfcl(tool):
         schema_str = bfcl_function_to_schema(tool, test_category).strip()
@@ -201,36 +234,19 @@ def tool_to_regex(tool, whitespace_pattern=None, test_category=None):
         schema_regex = build_regex_from_schema(schema_str, whitespace_pattern)
         regex_str = f'{{"tool_name": "{tool.__name__}", "tool_arguments": {schema_regex}}}'
     elif isinstance(tool, str):
-        schema_str = tool.replace("\n", " ").replace("  ", " ").strip()
+        schema_str = re.sub(r'\s+', ' ', tool).strip()
         schema_regex = build_regex_from_schema(schema_str, whitespace_pattern)
         regex_str = f'{{"tool_name": "{json.loads(schema_str)["title"]}", "tool_arguments": {schema_regex}}}'
 
+    # if sometimes:
+    #     regex_str = sometime_guide(regex_str)
+    # elif not isinstance(tool, list):
+    #     regex_str = f"{start_guided_pattern}{regex_str}{end_guided_pattern}"
+
+    if not isinstance(tool, list):
+        regex_str = repeat_regex_pattern(regex_str, n_tool_calls)
+
     return regex_str, schema_str
-
-
-#####################################################################
-# Initialize model + tokenizer
-#####################################################################
-
-
-def _init_llm(model_name):
-    llm = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        device_map="auto",
-        trust_remote_code=True,
-        torch_dtype=torch.bfloat16,
-        token="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",
-        )
-    return llm
-
-
-def _init_tokenizer(tokenizer_name):
-    tokenizer = AutoTokenizer.from_pretrained(
-        tokenizer_name,
-        trust_remote_code=True,
-        token="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",
-        )
-    return tokenizer
 
 
 #####################################################################
@@ -314,8 +330,30 @@ def get_system_prompt(
         )
 
 
-def format_result(result):
-    args, function_name = result["tool_arguments"], result["tool_name"]
-    args_string = ', '.join([f"{key}='{value}'" if isinstance(value, str) else f"{key}={value}" for key, value in args.items()])
-    output_string = f'[{function_name}({args_string})]'
-    return output_string
+#####################################################################
+# Parse Output
+#####################################################################
+
+
+def parse_tool(text):
+    """Return a list of all tools that match the tool_regex and is independent of `tool_call_start` and `tool_call_end`. This works for multiple functions.
+    This works """
+
+    tool_regex = r'\{"tool_name": "([^"]+)", "tool_arguments": (\{[^{}]*\})\}'
+    matches = re.findall(tool_regex, text)
+    tool_calls = []
+    for match in matches:
+        tool_name = match[0]
+        tool_arguments = json.loads(match[1])
+        tool_calls.append({'tool_name': tool_name, 'tool_arguments': tool_arguments})
+    return tool_calls
+
+
+def bfcl_format(tools):
+    tool_strs = []
+    for tool in tools:
+        args_string = ', '.join([f"{key}='{value}'" if isinstance(value, str) else f"{key}={value}" for key, value in tool["tool_arguments"].items()])
+        tool_str = f'{tool["tool_name"]}({args_string})'
+        tool_strs.append(tool_str)
+    result = '[' + ', '.join(tool_strs) + ']'
+    return result
