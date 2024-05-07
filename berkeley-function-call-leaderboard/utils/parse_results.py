@@ -26,7 +26,12 @@ def get_acc_df(models=['databricks-dbrx-instruct-old-run'], scores_path='score')
         acc_df['metric'] = acc_df['filename'].apply(lambda x: x.split('/')[-1].split('.')[0])
 
         overall_acc = acc_df.correct_count.sum() / acc_df.total_count.sum()
-        print(f'\n\nModel: {model} | Overall accuracy: {overall_acc}\n\n')
+        if model == "generic-vllm-model":
+            model_name = os.environ.get("VLLM_MODEL_NAME", model)
+        else:
+            model_name = model
+
+        print(f'\n\nModel: {model_name} | Overall accuracy: {overall_acc}\n\n')
         acc_df_list.append(acc_df)
 
     return pd.concat(acc_df_list)
