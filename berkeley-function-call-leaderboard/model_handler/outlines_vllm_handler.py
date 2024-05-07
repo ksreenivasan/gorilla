@@ -40,7 +40,7 @@ class OutlinesVllmHandler(BaseHandler):
         temperature=0.7,
         top_p=1,
         max_tokens=150,
-        guided: bool = True,
+        guided: bool = False,
         n_tool_calls=1,
         seed=42) -> None:
 
@@ -62,7 +62,6 @@ class OutlinesVllmHandler(BaseHandler):
         # Cast to list
         if not isinstance(functions, list):
             functions = [functions]
-
 
         # Prompt
         try:
@@ -283,7 +282,6 @@ def get_text_generator(model):
 # Prompt
 #####################################################################
 
-
 def get_system_prompt(
     tool_schema,
     tool_list_start="<tool>",
@@ -298,7 +296,7 @@ def get_system_prompt(
 
 
     Please use your own judgment as to whether or not you should call a function. In particular, you must follow these guiding principles:
-    1. You may call one or more functions to assist with the user query.
+    1. You may call one or more functions to assist with the user query. You should call multiple functions when the user asks you to.
     2. You do not need to call a function. If none of the functions can be used to answer the user's question, please do not make the function call.
     3. Don't make assumptions about what values to plug into functions. If you are missing the parameters to make a function call, please ask the user for the parameters.
     4. You may assume the user has implemented the function themselves.
@@ -310,9 +308,9 @@ def get_system_prompt(
 
     Rule 2: For each function call return a json object (using quotes) with function name and arguments within {tool_call_start}\n{{ }}\n{tool_call_end} XML tags as follows:
     * With arguments:
-    {tool_call_start}\n{{"name": "function_name", "arguments": {{"argument_1_name": "value", "argument_2_name": "value"}} }}\n{tool_call_end}
+    {tool_call_start}\n{{"tool_name": "function_name", "tool_arguments": {{"argument_1_name": "value", "argument_2_name": "value"}} }}\n{tool_call_end}
     * Without arguments:
-    {tool_call_start}\n{{ "name": "function_name", "arguments": {{}} }}\n{tool_call_end}
+    {tool_call_start}\n{{ "tool_name": "function_name", "tool_arguments": {{}} }}\n{tool_call_end}
     In between {tool_call_start} and{tool_call_end} tags, you MUST respond in a valid JSON schema.
     In between the {tool_call_start} and {tool_call_end} tags you MUST only write in json; no other text is allowed.
 
@@ -334,7 +332,6 @@ def get_system_prompt(
         tool_response_end=tool_response_end,
         tool_schema=tool_schema,
         )
-
 
 #####################################################################
 # Parse Output
