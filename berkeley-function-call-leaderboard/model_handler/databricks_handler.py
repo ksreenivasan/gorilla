@@ -1,3 +1,4 @@
+import os
 import re
 import time
 
@@ -73,8 +74,8 @@ class DatabricksHandler(BaseHandler):
 
         # NOTE: To run the Databricks model, you need to provide your own Databricks API key and your own Azure endpoint URL.
         self.client = OpenAI(
-            api_key="{YOUR_DATABRICKS_API_KEY}",
-            base_url="{YOUR_DATABRICKS_AZURE_ENDPOINT_URL}",
+            api_key=os.getenv("YOUR_DATABRICKS_API_KEY"),
+            base_url=os.getenv("YOUR_DATABRICKS_AZURE_ENDPOINT_URL"),
         )
 
     def inference(self, prompt, functions, test_category):
@@ -91,20 +92,19 @@ class DatabricksHandler(BaseHandler):
         #         ),
         #     },
         # ]
-        message = [
+        messages = [
             {"role": "system", "content": get_system_prompt(str(functions))},
             {"role": "user", "content": prompt},
         ]
 
-        function_input = {"type": "function", "function": functions[0]}
+        # function_input = {"type": "function", "function": functions[0]}
         start_time = time.time()
         response = self.client.chat.completions.create(
-            messages=message,
+            messages=messages,
             model=self.model_name,
             temperature=self.temperature,
             max_tokens=self.max_tokens,
             top_p=self.top_p,
-            function=function_input,
         )
         latency = time.time() - start_time
         result = response.choices[0].message.content
