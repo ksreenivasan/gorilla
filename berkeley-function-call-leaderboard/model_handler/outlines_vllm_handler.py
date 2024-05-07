@@ -40,7 +40,7 @@ class OutlinesVllmHandler(BaseHandler):
         temperature=0.7,
         top_p=1,
         max_tokens=150,
-        guided: bool = False,
+        guided: bool = True,
         n_tool_calls=1,
         seed=42) -> None:
 
