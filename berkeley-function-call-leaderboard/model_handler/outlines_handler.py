@@ -7,8 +7,6 @@ from textwrap import dedent
 from typing import Union
 
 import torch
-from accelerate import init_empty_weights, load_checkpoint_and_dispatch
-from huggingface_hub import snapshot_download
 from model_handler.constant import (
     GORILLA_TO_OPENAPI,
     SYSTEM_PROMPT_FOR_CHAT_MODEL,
