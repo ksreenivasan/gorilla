@@ -90,11 +90,18 @@ class OutlinesVllmHandler(BaseHandler):
             messages=messages,
             extra_body=extra_body,
             )
+        text = completion.choices[0].message.content
 
         # Parse output
-        text = completion.choices[0].message.content
-        tools = parse_tool(text)
-        result = bfcl_format(tools)
+        try:
+            tools = parse_tool(text)
+            result = bfcl_format(tools)
+            if result == []:
+                result = text
+        except Exception as e:
+            result = f'[error.message(error="{e}")]'
+            print(f"An error occurred: {e}")
+            return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0}
 
         # Record info
         latency = time.time() - start
