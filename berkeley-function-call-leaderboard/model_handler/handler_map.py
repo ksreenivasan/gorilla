@@ -17,6 +17,7 @@ from model_handler.mistral_handler import MistralHandler
 from model_handler.nexus_handler import NexusHandler
 from model_handler.oss_handler import OSSHandler
 from model_handler.outlines_handler import OutlinesHandler
+from model_handler.outlines_vllm_handler import OutlinesVllmHandler
 
 handler_map = {
     "gorilla-openfunctions-v0": GorillaHandler,
@@ -60,7 +61,8 @@ handler_map = {
     "meetkai/functionary-medium-v2.2-FC": FunctionaryHandler,
     "meetkai/functionary-small-v2.4-FC": FunctionaryHandler,
     "meetkai/functionary-medium-v2.4-FC": FunctionaryHandler,
-    "databricks-dbrx-instruct": DatabricksHandler,
+    "databricks-dbrx-instruct": OutlinesVllmHandler,
+    # "databricks-dbrx-instruct": DatabricksHandler,
     "NousResearch/Hermes-2-Pro-Mistral-7B": HermesHandler,
     "meta-llama/Meta-Llama-3-8B-Instruct": LlamaHandler,
     "meta-llama/Meta-Llama-3-70B-Instruct": LlamaHandler,
