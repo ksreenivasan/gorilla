@@ -55,6 +55,9 @@ class OutlinesVllmHandler(BaseHandler):
         if self.seed:
             self.rng.manual_seed(self.seed)
 
+        self.example_idx = 0
+        self.solutions = None
+
         super().__init__(model_name, temperature, top_p, max_tokens)
 
     def inference(self, prompt, functions, test_category):
@@ -63,9 +66,14 @@ class OutlinesVllmHandler(BaseHandler):
         if not isinstance(functions, list):
             functions = [functions]
 
+        if self.solutions is None and self.guided:
+            self.solutions = get_solutions(test_category)
+            self.n_tool_calls = len(self.solutions(self.example_idx))
+            self.example_idx += 1
+
         # Prompt
         try:
-            regex_str, tool_schema = tool_to_regex(functions)
+            regex_str, tool_schema = tool_to_regex(functions, n_tool_calls=self.n_tool_calls)
         except Exception as e:
             result = f'[error.message(error="{str(e)}")]'
             print(f"An error occurred: {str(e)}")
@@ -155,6 +163,25 @@ class OutlinesVllmHandler(BaseHandler):
             for line in f:
                 result_list.append(json.loads(line))
         return result_list
+
+
+
+
+
+
+
+def get_solutions(test_category):
+    test_category = test_category.strip("executable_")
+    solutions_path = f"./data/possible_answer/gorilla_openfunctions_v1_test_{test_category}_function.json"
+    solutions = []
+    with open(solutions_path, "r") as f:
+        for line in f:
+            solutions.append(json.loads(line))
+    return solutions
+
+
+
+
 
 
 #####################################################################
