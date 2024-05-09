@@ -43,14 +43,14 @@ class OutlinesVllmHandler(BaseHandler):
         if not isinstance(functions, list):
             functions = [functions]
 
-
-        # Regex str
-        try:
-            regex_str, tool_schema = tool_to_regex(functions)
-        except Exception as e:
-            result = f'[error.message(error="{str(e)}")]'
-            print(f"An error occurred: {str(e)}")
-            return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0}
+        # Get regex for tool use
+        regex_str, tool_schema = tool_to_regex(functions)
+        # try:
+        #     regex_str, tool_schema = tool_to_regex(functions)
+        # except Exception as e:
+        #     result = f'[error.message(error="{str(e)}")]'
+        #     print(f"An error occurred: {str(e)}")
+        #     return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0}
 
         # Prompt
         system_prompt = get_system_prompt(tool_schema)
