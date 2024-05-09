@@ -11,8 +11,9 @@ from model_handler.handler import BaseHandler
 from model_handler.model_style import ModelStyle
 from model_handler.utils import _cast_to_openai_type, ast_parse
 from openai import OpenAI
-from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_signature
 from pydantic import BaseModel
+
+from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_signature
 
 
 class OutlinesVllmHandler(BaseHandler):
@@ -274,8 +275,15 @@ def tool_to_regex(
         regex_strs, schema_strs = [v[0] for v in values], [v[1] for v in values]
         regex_str = reduce(regex_or, regex_strs)
         schema_str = "\n".join(schema_strs)
-    elif is_bfcl(tool):
-        schema_str = bfcl_function_to_schema(tool, test_category).strip()
+    elif is_bfcl(tool): # only works for BFCL
+        schema_json = {
+            "title": tool["name"],
+            "type": "object",
+            "description": tool["description"],
+            "properties": tool["parameters"]["properties"],
+            "required": tool["parameters"]["required"],
+            }
+        schema_str = json.dumps(schema_json)
         schema_regex = build_regex_from_schema(schema_str, whitespace_pattern)
         regex_str = f'{{"tool_name": "{tool["name"]}", "tool_arguments": {schema_regex}}}'
     elif isinstance(tool, type(BaseModel)):
