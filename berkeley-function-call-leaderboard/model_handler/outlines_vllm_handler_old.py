@@ -41,6 +41,7 @@ class OutlinesVllmHandler(BaseHandler):
         top_p=1,
         max_tokens=150,
         guided: bool = True,
+        n_tool_calls=1,
         seed=42) -> None:
 
         self.client = OpenAI(base_url="http://localhost:8000/v1", api_key="-")
@@ -54,6 +55,9 @@ class OutlinesVllmHandler(BaseHandler):
         if self.seed:
             self.rng.manual_seed(self.seed)
 
+        self.example_idx = 0
+        self.solutions = None
+
         super().__init__(model_name, temperature, top_p, max_tokens)
 
     def inference(self, prompt, functions, test_category):
@@ -62,26 +66,50 @@ class OutlinesVllmHandler(BaseHandler):
         if not isinstance(functions, list):
             functions = [functions]
 
+        if self.solutions is None and self.guided:
+            self.solutions = get_solutions(test_category)
+            self.n_tool_calls = len(self.solutions(self.example_idx))
+            self.example_idx += 1
 
-        # Regex str
+        # Prompt
         try:
             regex_str, tool_schema = tool_to_regex(functions, n_tool_calls=self.n_tool_calls)
         except Exception as e:
             result = f'[error.message(error="{str(e)}")]'
             print(f"An error occurred: {str(e)}")
             return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0}
-
-        # Prompt
         system_prompt = get_system_prompt(tool_schema)
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt},
             ]
 
-        # Generate tool calls
+        # Maybe guided
+        extra_body = {}
+        if self.guided:
+            extra_body=dict(guided_regex=regex_str, guided_decoding_backend="outlines")
+
+        # Start timer
         start = time.time()
-        messages, tool_calls = get_tool_calls(self.client, messages, regex_str)
-        result = bfcl_format(tool_calls)
+
+        # Generate text
+        completion = self.client.chat.completions.create(
+            model="databricks/dbrx-instruct",
+            messages=messages,
+            extra_body=extra_body,
+            )
+        text = completion.choices[0].message.content
+
+        # Parse output
+        try:
+            tools = parse_tool(text)
+            result = bfcl_format(tools)
+            if result == []:
+                result = text
+        except Exception as e:
+            result = f'[error.message(error="{e}")]'
+            print(f"An error occurred: {e}")
+            return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0}
 
         # Record info
         latency = time.time() - start
@@ -137,87 +165,28 @@ class OutlinesVllmHandler(BaseHandler):
         return result_list
 
 
+
+
+
+
+
+def get_solutions(test_category):
+    test_category = test_category.strip("executable_")
+    solutions_path = f"./data/possible_answer/gorilla_openfunctions_v1_test_{test_category}_function.json"
+    solutions = []
+    with open(solutions_path, "r") as f:
+        for line in f:
+            solutions.append(json.loads(line))
+    return solutions
+
+
+
+
+
+
 #####################################################################
-# Tool to Regex
+# Function to Regex
 #####################################################################
-
-
-GORILLA_TO_OPENAPI = {
-    "integer": "integer",
-    "number": "number",
-    "float": "number",
-    "string": "string",
-    "boolean": "boolean",
-    "bool": "boolean",
-    "array": "array",
-    "list": "array",
-    "dict": "object",
-    "object": "object",
-    "tuple": "array",
-    "any": "string",
-    "byte": "integer",
-    "short": "integer",
-    "long": "integer",
-    "double": "number",
-    "char": "string",
-    "ArrayList": "array",
-    "Array": "array",
-    "HashMap": "object",
-    "Hashtable": "object",
-    "Queue": "array",
-    "Stack": "array",
-    "Any": "string",
-    "String": "string",
-    "Bigint": "integer",
-}
-
-
-def _cast_to_openai_type(properties, mapping, test_category):
-    for key, value in properties.items():
-        if "type" not in value:
-            properties[key]["type"] = "string"
-        else:
-            var_type = value["type"]
-            if mapping == GORILLA_TO_OPENAPI and var_type == "float":
-                properties[key]["format"] = "float"
-                properties[key]["description"] += " This is a float type value."
-            if var_type in mapping:
-                properties[key]["type"] = mapping[var_type]
-            else:
-                properties[key]["type"] = "string"
-
-        # Currently support:
-        # - list of any
-        # - list of list of any
-        # - list of dict
-        # - list of list of dict
-        # - dict of any
-
-        if properties[key]["type"] == "array" or properties[key]["type"] == "object":
-            if "properties" in properties[key]:
-                properties[key]["properties"] = _cast_to_openai_type(
-                    properties[key]["properties"], mapping, test_category
-                )
-            elif "items" in properties[key]:
-                properties[key]["items"]["type"] = mapping[
-                    properties[key]["items"]["type"]
-                ]
-                if (
-                    properties[key]["items"]["type"] == "array"
-                    and "items" in properties[key]["items"]
-                ):
-                    properties[key]["items"]["items"]["type"] = mapping[
-                        properties[key]["items"]["items"]["type"]
-                    ]
-                elif (
-                    properties[key]["items"]["type"] == "object"
-                    and "properties" in properties[key]["items"]
-                ):
-                    properties[key]["items"]["properties"] = _cast_to_openai_type(
-                        properties[key]["items"]["properties"], mapping, test_category
-                    )
-    return properties
-
 
 def bfcl_function_to_schema(function, test_category):
     properties = _cast_to_openai_type(function["parameters"]["properties"], GORILLA_TO_OPENAPI, test_category)
@@ -274,8 +243,8 @@ def repeat_regex_pattern(pattern, num_repeats, sep="\\n"):
 def tool_to_regex(
     tool,
     n_tool_calls=1,
-    tool_call_start="<tool_call>",
-    tool_call_end="</tool_call>",
+    start_guided_pattern="<tool_call>",
+    end_guided_pattern="</tool_call>",
     sometimes=False,
     whitespace_pattern=None,
     test_category=None,
@@ -283,7 +252,7 @@ def tool_to_regex(
 
     if isinstance(tool, list):
         values = [
-            tool_to_regex(_tool, n_tool_calls=n_tool_calls, tool_call_start=tool_call_start, tool_call_end=tool_call_end, sometimes=sometimes, whitespace_pattern=whitespace_pattern, test_category=test_category,)
+            tool_to_regex(_tool, n_tool_calls=n_tool_calls, start_guided_pattern=start_guided_pattern, end_guided_pattern=end_guided_pattern, sometimes=sometimes, whitespace_pattern=whitespace_pattern, test_category=test_category,)
             for _tool in tool
             ]
         regex_strs, schema_strs = [v[0] for v in values], [v[1] for v in values]
@@ -310,20 +279,42 @@ def tool_to_regex(
 
     # if sometimes:
     #     regex_str = sometime_guide(regex_str)
-    if not isinstance(tool, list):
-        # regex_str = f"{tool_call_start}{regex_str}{tool_call_end}"
-        regex_str = f"{regex_str}{tool_call_end}"
+    # elif not isinstance(tool, list):
+    #     regex_str = f"{start_guided_pattern}{regex_str}{end_guided_pattern}"
 
-    # if not isinstance(tool, list):
-    #     regex_str = repeat_regex_pattern(regex_str, n_tool_calls)
+    if not isinstance(tool, list):
+        regex_str = repeat_regex_pattern(regex_str, n_tool_calls)
 
     return regex_str, schema_str
 
 
 #####################################################################
-# Prompt
+# Generator
 #####################################################################
 
+
+def get_regex_generator(functions, model, whitespace_pattern, n_tool_calls, test_category, verbose=0):
+    functions_regex_str = all_functions_to_regex_str(
+        functions,
+        test_category,
+        whitespace_pattern,
+        n_tool_calls=n_tool_calls,
+        verbose=verbose,
+        )
+
+    generator = generate.regex(model, functions_regex_str)
+    # generator.format_sequence = lambda x: x
+    generator.format_sequence = lambda x: json.loads(x) # to work with json; from https://github.com/outlines-dev/outlines/blob/078f8223b6d8970ca6cc12d6c17659868e993691/outlines/generate/json.py#L60
+
+    return generator
+
+def get_text_generator(model):
+    return generate.text(model)
+
+
+#####################################################################
+# Prompt
+#####################################################################
 
 def get_system_prompt(
     tool_schema,
@@ -344,7 +335,6 @@ def get_system_prompt(
     3. Don't make assumptions about what values to plug into functions. If you are missing the parameters to make a function call, please ask the user for the parameters.
     4. You may assume the user has implemented the function themselves.
     5. You may assume the user will call the function on their own. You should NOT ask the user to call the function and let you know the result; they will do this on their own.
-    6. Never call a tool twice with the same exact arguments. Do not repeat your tool calls!
 
 
     You can only call functions according the following formatting rules:
@@ -377,77 +367,30 @@ def get_system_prompt(
         tool_schema=tool_schema,
         )
 
-
 #####################################################################
-# Generator
+# Parse Output
 #####################################################################
 
-def generate_structured(client, messages, regex_str, stop_token=None, max_tokens=4096):
 
-    completion = client.chat.completions.create(
-      model="databricks/dbrx-instruct",
-      max_tokens=max_tokens,
-      messages=messages,
-      stop=stop_token,
-      extra_body=dict(guided_regex=regex_str, guided_decoding_backend="outlines"),
-      )
-    raw_text = completion.choices[0].message.content
-    finish_reason = completion.choices[0].stop_reason
-    return raw_text, finish_reason
+def parse_tool(text):
+    """Return a list of all tools that match the tool_regex and is independent of `tool_call_start` and `tool_call_end`. This works for multiple functions.
+    This works """
 
-
-def generate_unstructured(client, messages, stop_token=None, max_tokens=4096):
-
-    completion = client.chat.completions.create(
-      model="databricks/dbrx-instruct",
-      max_tokens=max_tokens,
-      messages=messages,
-      stop=stop_token,
-      extra_body={},
-      )
-    raw_text = completion.choices[0].message.content
-    finish_reason = completion.choices[0].stop_reason
-    return raw_text, finish_reason
-
-
-def get_tool_calls(client, messages, regex_str, tool_call_start="<tool_call>", tool_call_end="</tool_call>", max_tool_calls=5, verbose=0):
-
-    n_tool_calls = 0
+    tool_regex = r'\{"tool_name": "([^"]+)", "tool_arguments": (\{[^{}]*\})\}'
+    matches = re.findall(tool_regex, text)
     tool_calls = []
-
-    text, finish_reason = generate_unstructured(client, messages, stop_token=tool_call_start)
-    text += tool_call_start
-    messages.append({"role": "assistant", "content": text})
-    if verbose: print("-"*70, "\n", "(Finish:", finish_reason, ")\n", text)
-
-    while n_tool_calls < max_tool_calls and finish_reason == tool_call_start:
-
-        text, finish_reason = generate_structured(client, messages, stop_token=tool_call_end, regex_str=regex_str)
-        tool_calls.append(json.loads(text))
-        text += tool_call_end
-        messages.append({"role": "assistant", "content": text})
-        if verbose: print("-"*70, "\n", "(Finish:", finish_reason, ")\n", text)
-
-        n_tool_calls += 1
-
-        text, finish_reason = generate_unstructured(client, messages, stop_token=tool_call_start)
-        text += tool_call_start
-        messages.append({"role": "assistant", "content": text})
-        if verbose: print("-"*70, "\n", "(Finish:", finish_reason, ")\n", text)
-
-    return messages, tool_calls
+    for match in matches:
+        tool_name = match[0]
+        tool_arguments = json.loads(match[1])
+        tool_calls.append({'tool_name': tool_name, 'tool_arguments': tool_arguments})
+    return tool_calls
 
 
-#####################################################################
-# Parse
-#####################################################################
-
-def bfcl_format(tool_calls):
+def bfcl_format(tools):
     tool_strs = []
-    for tool_call in tool_calls:
-        args, name = tool_call["tool_arguments"], tool_call["tool_name"]
-        args_string = ', '.join([f"{key}='{value}'" if isinstance(value, str) else f"{key}={value}" for key, value in args.items()])
-        tool_str = f'{name}({args_string})'
+    for tool in tools:
+        args_string = ', '.join([f"{key}='{value}'" if isinstance(value, str) else f"{key}={value}" for key, value in tool["tool_arguments"].items()])
+        tool_str = f'{tool["tool_name"]}({args_string})'
         tool_strs.append(tool_str)
     result = '[' + ', '.join(tool_strs) + ']'
     return result
