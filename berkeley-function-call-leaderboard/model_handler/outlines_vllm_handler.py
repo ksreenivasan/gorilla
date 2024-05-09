@@ -30,8 +30,6 @@ class OutlinesVllmHandler(BaseHandler):
         self.model_style = ModelStyle.Outlines
 
         self.guided = guided
-        self.n_tool_calls = n_tool_calls
-
         self.seed = seed
         self.rng = torch.Generator(device="cuda")
         if self.seed:
