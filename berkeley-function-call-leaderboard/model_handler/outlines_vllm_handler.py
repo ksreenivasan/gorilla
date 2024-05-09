@@ -44,13 +44,12 @@ class OutlinesVllmHandler(BaseHandler):
             functions = [functions]
 
         # Get regex for tool use
-        regex_str, tool_schema = tool_to_regex(functions)
-        # try:
-        #     regex_str, tool_schema = tool_to_regex(functions)
-        # except Exception as e:
-        #     result = f'[error.message(error="{str(e)}")]'
-        #     print(f"An error occurred: {str(e)}")
-        #     return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0}
+        try:
+            regex_str, tool_schema = tool_to_regex(functions)
+        except Exception as e:
+            result = f'[error.message(error="{str(e)}")]'
+            print(f"An error occurred: {str(e)}")
+            return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0}
 
         # Prompt
         system_prompt = get_system_prompt(tool_schema)
@@ -66,7 +65,7 @@ class OutlinesVllmHandler(BaseHandler):
 
         # Record info
         latency = time.time() - start
-        metadata = {"input_tokens": 0, "output_tokens": 0, "latency": latency}
+        metadata = {"input_tokens": 0, "output_tokens": 0, "latency": latency, "messages": messages}
         return result, metadata
 
     def decode_ast(self, result, language="Python"):
