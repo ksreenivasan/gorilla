@@ -23,6 +23,7 @@ class OutlinesVllmHandler(BaseHandler):
         model_name,
         temperature=0.7,
         top_p=1,
+        max_tool_calls=5,
         max_tokens=150,
         guided: bool = True,
         seed=42) -> None:
@@ -35,6 +36,8 @@ class OutlinesVllmHandler(BaseHandler):
         self.rng = torch.Generator(device="cuda")
         if self.seed:
             self.rng.manual_seed(self.seed)
+
+        self.max_tool_calls = max_tool_calls
 
         super().__init__(model_name, temperature, top_p, max_tokens)
 
@@ -50,7 +53,7 @@ class OutlinesVllmHandler(BaseHandler):
         except Exception as e:
             result = f'[error.message(error="{str(e)}")]'
             print(f"An error occurred: {str(e)}")
-            return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0, "messages": ""}
+            return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0, "messages": "", "tool_calls": []}
 
         # Prompt
         system_prompt = get_system_prompt(tool_schema)
@@ -62,16 +65,16 @@ class OutlinesVllmHandler(BaseHandler):
         # Generate tool calls
         try:
             start = time.time()
-            messages, tool_calls = get_tool_calls(self.client, messages, regex_str, max_tool_calls=1)
+            messages, tool_calls = get_tool_calls(self.client, messages, regex_str, max_tool_calls=self.max_tool_calls)
             result = bfcl_format(tool_calls)
         except Exception as e:
             result = f'[error.message(error="{str(e)}")]'
             print(f"An error occurred: {str(e)}")
-            return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0, "messages": ""}
+            return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0, "messages": "", "tool_calls": []}
 
         # Record info
         latency = time.time() - start
-        metadata = {"input_tokens": 0, "output_tokens": 0, "latency": latency, "messages": messages}
+        metadata = {"input_tokens": 0, "output_tokens": 0, "latency": latency, "messages": messages, "tool_calls": tool_calls}
         return result, metadata
 
     def decode_ast(self, result, language="Python"):

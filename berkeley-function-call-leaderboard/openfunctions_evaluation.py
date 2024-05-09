@@ -112,4 +112,6 @@ if __name__ == "__main__":
                 }
                 if "messages" in metadata:
                     result_to_write["messages"] = metadata["messages"]
+                if "tool_calls" in metadata:
+                    result_to_write["tool_calls"] = metadata["tool_calls"]
                 handler.write(result_to_write, file_to_open)
