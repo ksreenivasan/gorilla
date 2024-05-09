@@ -49,7 +49,7 @@ class OutlinesVllmHandler(BaseHandler):
         except Exception as e:
             result = f'[error.message(error="{str(e)}")]'
             print(f"An error occurred: {str(e)}")
-            return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0}
+            return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0, "messages": ""}
 
         # Prompt
         system_prompt = get_system_prompt(tool_schema)
@@ -59,9 +59,14 @@ class OutlinesVllmHandler(BaseHandler):
             ]
 
         # Generate tool calls
-        start = time.time()
-        messages, tool_calls = get_tool_calls(self.client, messages, regex_str)
-        result = bfcl_format(tool_calls)
+        try:
+            start = time.time()
+            messages, tool_calls = get_tool_calls(self.client, messages, regex_str)
+            result = bfcl_format(tool_calls)
+        except Exception as e:
+            result = f'[error.message(error="{str(e)}")]'
+            print(f"An error occurred: {str(e)}")
+            return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0, "messages": ""}
 
         # Record info
         latency = time.time() - start
