@@ -46,7 +46,7 @@ class OutlinesVllmHandler(BaseHandler):
 
         # Regex str
         try:
-            regex_str, tool_schema = tool_to_regex(functions, n_tool_calls=self.n_tool_calls)
+            regex_str, tool_schema = tool_to_regex(functions)
         except Exception as e:
             result = f'[error.message(error="{str(e)}")]'
             print(f"An error occurred: {str(e)}")
