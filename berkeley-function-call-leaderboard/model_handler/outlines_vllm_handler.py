@@ -374,6 +374,7 @@ def generate_structured(client, messages, regex_str, stop_token=None, max_tokens
       max_tokens=max_tokens,
       messages=messages,
       stop=stop_token,
+      temperature=0,
       extra_body=dict(guided_regex=regex_str, guided_decoding_backend="outlines"),
       )
     raw_text = completion.choices[0].message.content
@@ -388,6 +389,7 @@ def generate_unstructured(client, messages, stop_token=None, max_tokens=4096):
       max_tokens=max_tokens,
       messages=messages,
       stop=stop_token,
+      temperature=0,
       extra_body={},
       )
     raw_text = completion.choices[0].message.content
