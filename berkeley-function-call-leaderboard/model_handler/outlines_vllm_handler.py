@@ -61,7 +61,7 @@ class OutlinesVllmHandler(BaseHandler):
         # Generate tool calls
         try:
             start = time.time()
-            messages, tool_calls = get_tool_calls(self.client, messages, regex_str)
+            messages, tool_calls = get_tool_calls(self.client, messages, regex_str, max_tool_calls=1)
             result = bfcl_format(tool_calls)
         except Exception as e:
             result = f'[error.message(error="{str(e)}")]'
