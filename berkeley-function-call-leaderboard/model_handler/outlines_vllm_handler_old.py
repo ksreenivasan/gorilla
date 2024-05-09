@@ -26,10 +26,11 @@ from model_handler.utils import (
     language_specific_pre_processing,
 )
 from openai import OpenAI
-from outlines import generate, models
-from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_signature
 from pydantic import BaseModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
+
+from outlines import generate, models
+from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_signature
 
 
 class OutlinesVllmHandler(BaseHandler):
@@ -348,7 +349,7 @@ def get_system_prompt(
     In between {tool_call_start} and{tool_call_end} tags, you MUST respond in a valid JSON schema.
     In between the {tool_call_start} and {tool_call_end} tags you MUST only write in json; no other text is allowed.
 
-    Rule 3: If user decides to run the function, they will output the result of the function call between the {tool_response_start} and {tool_response_start} tags. If it answers the user's question, you should incorporate the output of the function in your answer.
+    Rule 3: If user decides to run the function, they will output the result of the function call between the {tool_response_start} and {tool_response_end} tags. If it answers the user's question, you should incorporate the output of the function in your answer.
 
 
     Here are the tools available to you:
