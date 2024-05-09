@@ -11,9 +11,8 @@ from model_handler.handler import BaseHandler
 from model_handler.model_style import ModelStyle
 from model_handler.utils import _cast_to_openai_type, ast_parse
 from openai import OpenAI
-from pydantic import BaseModel
-
 from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_signature
+from pydantic import BaseModel
 
 
 class OutlinesVllmHandler(BaseHandler):
@@ -65,7 +64,7 @@ class OutlinesVllmHandler(BaseHandler):
         # Generate tool calls
         try:
             start = time.time()
-            messages, tool_calls = get_tool_calls(self.client, messages, regex_str, max_tool_calls=self.max_tool_calls)
+            messages, tool_calls = get_tool_calls(self.client, self.model_name, messages, regex_str, max_tool_calls=self.max_tool_calls)
             result = bfcl_format(tool_calls)
         except Exception as e:
             result = f'[error.message(error="{str(e)}")]'
@@ -378,10 +377,10 @@ def get_system_prompt(
 # Generator
 #####################################################################
 
-def generate_structured(client, messages, regex_str, stop_token=None, max_tokens=4096):
+def generate_structured(client, model_name, messages, regex_str, stop_token=None, max_tokens=4096):
 
     completion = client.chat.completions.create(
-      model="databricks/dbrx-instruct",
+      model=model_name,
       max_tokens=max_tokens,
       messages=messages,
       stop=stop_token,
@@ -393,10 +392,10 @@ def generate_structured(client, messages, regex_str, stop_token=None, max_tokens
     return raw_text, finish_reason
 
 
-def generate_unstructured(client, messages, stop_token=None, max_tokens=4096):
+def generate_unstructured(client, model_name, messages, stop_token=None, max_tokens=4096):
 
     completion = client.chat.completions.create(
-      model="databricks/dbrx-instruct",
+      model=model_name,
       max_tokens=max_tokens,
       messages=messages,
       stop=stop_token,
@@ -408,19 +407,19 @@ def generate_unstructured(client, messages, stop_token=None, max_tokens=4096):
     return raw_text, finish_reason
 
 
-def get_tool_calls(client, messages, regex_str, tool_call_start="<tool_call>", tool_call_end="</tool_call>", max_tool_calls=5, verbose=0):
+def get_tool_calls(client, model_name, messages, regex_str, tool_call_start="<tool_call>", tool_call_end="</tool_call>", max_tool_calls=5, verbose=0):
 
     n_tool_calls = 0
     tool_calls = []
 
-    text, finish_reason = generate_unstructured(client, messages, stop_token=tool_call_start)
+    text, finish_reason = generate_unstructured(client, model_name, messages, stop_token=tool_call_start)
     text += tool_call_start
     messages.append({"role": "assistant", "content": text})
     if verbose: print("-"*70, "\n", "(Finish:", finish_reason, ")\n", text)
 
     while n_tool_calls < max_tool_calls and finish_reason == tool_call_start:
 
-        text, finish_reason = generate_structured(client, messages, stop_token=tool_call_end, regex_str=regex_str)
+        text, finish_reason = generate_structured(client, model_name, messages, stop_token=tool_call_end, regex_str=regex_str)
         tool_calls.append(json.loads(text))
         text += tool_call_end
         messages.append({"role": "assistant", "content": text})
@@ -428,7 +427,7 @@ def get_tool_calls(client, messages, regex_str, tool_call_start="<tool_call>", t
 
         n_tool_calls += 1
 
-        text, finish_reason = generate_unstructured(client, messages, stop_token=tool_call_start)
+        text, finish_reason = generate_unstructured(client, model_name, messages, stop_token=tool_call_start)
         text += tool_call_start
         messages.append({"role": "assistant", "content": text})
         if verbose: print("-"*70, "\n", "(Finish:", finish_reason, ")\n", text)
