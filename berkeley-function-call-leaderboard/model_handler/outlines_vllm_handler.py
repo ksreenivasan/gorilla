@@ -7,29 +7,13 @@ from textwrap import dedent
 from typing import Union
 
 import torch
-from accelerate import init_empty_weights, load_checkpoint_and_dispatch
-from huggingface_hub import snapshot_download
-from model_handler.constant import (
-    GORILLA_TO_OPENAPI,
-    SYSTEM_PROMPT_FOR_CHAT_MODEL,
-    USER_PROMPT_FOR_CHAT_MODEL,
-)
+from model_handler.constant import GORILLA_TO_OPENAPI
 from model_handler.handler import BaseHandler
 from model_handler.model_style import ModelStyle
-from model_handler.utils import (
-    _cast_to_openai_type,
-    _convert_value,
-    _function_calls_valid_format_and_invoke_extraction,
-    ast_parse,
-    augment_prompt_by_languge,
-    convert_to_tool,
-    language_specific_pre_processing,
-)
+from model_handler.utils import _cast_to_openai_type, ast_parse
 from openai import OpenAI
-from outlines import generate, models
 from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_signature
 from pydantic import BaseModel
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 class OutlinesVllmHandler(BaseHandler):
