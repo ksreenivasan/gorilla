@@ -12,6 +12,7 @@ from model_handler.model_style import ModelStyle
 from model_handler.utils import _cast_to_openai_type, ast_parse
 from openai import OpenAI
 from pydantic import BaseModel
+from tool_use.prompt import get_system_prompt
 from tool_use.schema import tools_to_schema
 from tool_use.tools import Tool
 
@@ -27,14 +28,21 @@ class OutlinesVllmHandler(BaseHandler):
         top_p=1,
         n_tool_calls=1,
         max_tokens=150,
-        seed=42) -> None:
+        seed=42,
+        mode="conditional",
+        ) -> None:
 
         self.model_style = ModelStyle.Outlines
         self.n_tool_calls = n_tool_calls
-
+        self.mode = mode
         super().__init__(model_name, temperature, top_p, max_tokens)
 
-    def inference(self, prompt, tools, test_category):
+        # Initialize tool
+        self.base_url = "http://localhost:8000/v1"
+        self.api_key = "-"
+        self.tool = Tool(self.base_url, self.api_key, self.model_name)
+
+    def inference(self, user_query, tools, test_category):
 
         # Get schema for tool use
         try:
@@ -48,13 +56,20 @@ class OutlinesVllmHandler(BaseHandler):
         system_prompt = get_system_prompt(tool_schema)
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": prompt},
+            {"role": "user", "content": user_query},
             ]
+
 
         # Generate tool calls
         try:
             start = time.time()
-            messages, tool_calls = get_tool_calls(self.client, self.model_name, messages, regex_str, max_tool_calls=self.max_tool_calls)
+            if self.mode == "conditional":
+                output_messages, tool_calls = self.tool.conditional(messages, tools, n_tool_calls=2)
+            elif self.mode == "structured":
+                output_messages, tool_calls = self.tool.structured(messages, tools, n_tool_calls=2)
+            elif self.mode == "unstructured":
+                output_messages, tool_calls = self.tool.unstructured(messages)
+
             result = bfcl_format(tool_calls)
         except Exception as e:
             result = f'[error.message(error="{str(e)}")]'
