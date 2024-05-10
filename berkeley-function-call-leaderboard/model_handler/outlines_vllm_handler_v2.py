@@ -63,9 +63,9 @@ class OutlinesVllmHandler(BaseHandler):
         try:
             start = time.time()
             if self.mode == "conditional":
-                output_messages, tool_calls = self.tool.conditional(messages, tools, n_tool_calls=2)
+                output_messages, tool_calls = self.tool.conditional(messages, tools, n_tool_calls=self.n_tool_calls)
             elif self.mode == "structured":
-                output_messages, tool_calls = self.tool.structured(messages, tools, n_tool_calls=2)
+                output_messages, tool_calls = self.tool.structured(messages, tools, n_tool_calls=self.n_tool_calls)
             elif self.mode == "unstructured":
                 output_messages, tool_calls = self.tool.unstructured(messages)
 
