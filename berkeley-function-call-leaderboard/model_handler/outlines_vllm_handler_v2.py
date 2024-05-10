@@ -26,7 +26,7 @@ class OutlinesVllmHandler(BaseHandler):
         model_name,
         temperature=0.7,
         top_p=1,
-        n_tool_calls=1,
+        n_tool_calls=(1, 5),
         max_tokens=150,
         seed=42,
         mode="conditional",
