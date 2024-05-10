@@ -17,7 +17,7 @@ from model_handler.mistral_handler import MistralHandler
 from model_handler.nexus_handler import NexusHandler
 from model_handler.oss_handler import OSSHandler
 from model_handler.outlines_handler import OutlinesHandler
-from model_handler.outlines_vllm_handler import OutlinesVllmHandler
+from model_handler.outlines_vllm_handler_v2 import OutlinesVllmHandler
 
 handler_map = {
     "gorilla-openfunctions-v0": GorillaHandler,
