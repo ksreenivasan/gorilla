@@ -25,33 +25,20 @@ class OutlinesVllmHandler(BaseHandler):
         model_name,
         temperature=0.7,
         top_p=1,
-        max_tool_calls=5,
+        n_tool_calls=1,
         max_tokens=150,
-        guided: bool = True,
         seed=42) -> None:
 
-        self.client = OpenAI(base_url="http://localhost:8000/v1", api_key="-")
         self.model_style = ModelStyle.Outlines
-
-        self.guided = guided
-        self.seed = seed
-        self.rng = torch.Generator(device="cuda")
-        if self.seed:
-            self.rng.manual_seed(self.seed)
-
-        self.max_tool_calls = max_tool_calls
+        self.n_tool_calls = n_tool_calls
 
         super().__init__(model_name, temperature, top_p, max_tokens)
 
-    def inference(self, prompt, functions, test_category):
+    def inference(self, prompt, tools, test_category):
 
-        # Cast to list
-        if not isinstance(functions, list):
-            functions = [functions]
-
-        # Get regex for tool use
+        # Get schema for tool use
         try:
-            regex_str, tool_schema = tool_to_regex(functions)
+            tool_schema = tools_to_schema(tools)
         except Exception as e:
             result = f'[error.message(error="{str(e)}")]'
             print(f"An error occurred: {str(e)}")
