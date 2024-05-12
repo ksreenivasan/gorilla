@@ -42,7 +42,25 @@ class OutlinesVllmHandler(BaseHandler):
         self.api_key = "-"
         self.tool = Tool(self.base_url, self.api_key, self.model_name)
 
+        self.idx = 0
+        self.solutions = None
+
+    def load_solutions(self, test_category):
+        test_category = test_category.replace("executable_", "")
+        solutions_path = f"../data/possible_answer/gorilla_openfunctions_v1_test_{test_category}.json"
+        solutions = []
+        with open(solutions_path, "r") as f:
+            for line in f:
+                solutions.append(json.loads(line))
+        return solutions
+
     def inference(self, user_query, tools, test_category):
+
+        # get number of tool calls from the solution
+        if self.solutions is None:
+            self.solutions = self.load_solutions(test_category)
+        self.n_tool_calls = len(self.solutions[self.idx])
+        self.idx += 1
 
         # Get schema for tool use
         try:
