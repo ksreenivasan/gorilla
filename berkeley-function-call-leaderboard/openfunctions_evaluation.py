@@ -21,6 +21,7 @@ def get_args():
     parser.add_argument("--max-tokens", type=int, default=1200)
     parser.add_argument("--num-gpus", default=1, type=int)
     parser.add_argument("--timeout", default=60, type=int)
+    parser.add_argument("--gen-mode", default="conditional", type=str)
 
     args = parser.parse_args()
     return args
@@ -43,8 +44,10 @@ test_categories = {
 }
 
 
-def build_handler(model_name, temperature, top_p, max_tokens):
+def build_handler(model_name, temperature, top_p, max_tokens, gen_mode):
     handler = handler_map[model_name](model_name, temperature, top_p, max_tokens)
+    if "gen_mode" in vars(handler):
+        handler.gen_mode = gen_mode
     return handler
 
 
@@ -62,7 +65,7 @@ if __name__ == "__main__":
     args = get_args()
     if USE_COHERE_OPTIMIZATION and "command-r-plus" in args.model:
         args.model = args.model + "-optimized"
-    handler = build_handler(args.model, args.temperature, args.top_p, args.max_tokens)
+    handler = build_handler(args.model, args.temperature, args.top_p, args.max_tokens, args.gen_mode)
     if handler.model_style == ModelStyle.OSSMODEL:
         result = handler.inference(
             question_file="eval_data_total.json",

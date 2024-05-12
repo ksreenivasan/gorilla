@@ -28,13 +28,13 @@ class OutlinesVllmHandler(BaseHandler):
         top_p=1,
         max_tokens=150,
         seed=42,
-        mode="conditional",
+        gen_mode="conditional",
         n_tool_calls=1,
         ) -> None:
 
         self.model_style = ModelStyle.Outlines
         self.n_tool_calls = n_tool_calls
-        self.mode = mode
+        self.gen_mode = gen_mode
         super().__init__(model_name, temperature, top_p, max_tokens)
 
         # Initialize tool
@@ -47,7 +47,7 @@ class OutlinesVllmHandler(BaseHandler):
 
     def load_solutions(self, test_category):
         test_category = test_category.replace("executable_", "")
-        solutions_path = f"../data/possible_answer/gorilla_openfunctions_v1_test_{test_category}.json"
+        solutions_path = f"./data/possible_answer/gorilla_openfunctions_v1_test_{test_category}.json"
         solutions = []
         with open(solutions_path, "r") as f:
             for line in f:
@@ -80,11 +80,11 @@ class OutlinesVllmHandler(BaseHandler):
         # Generate tool calls
         try:
             start = time.time()
-            if self.mode == "conditional":
+            if self.gen_mode == "conditional":
                 output_messages, tool_calls = self.tool.conditional(messages, tools, n_tool_calls=self.n_tool_calls)
-            elif self.mode == "structured":
+            elif self.gen_mode == "structured":
                 output_messages, tool_calls = self.tool.structured(messages, tools, n_tool_calls=self.n_tool_calls)
-            elif self.mode == "unstructured":
+            elif self.gen_mode == "unstructured":
                 output_messages, tool_calls = self.tool.unstructured(messages)
 
             result = bfcl_format(tool_calls)
