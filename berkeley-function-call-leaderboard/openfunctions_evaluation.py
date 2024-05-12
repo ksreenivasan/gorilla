@@ -7,26 +7,6 @@ from model_handler.handler_map import handler_map
 from model_handler.model_style import ModelStyle
 from tqdm import tqdm
 
-
-def get_args():
-    parser = argparse.ArgumentParser()
-    # Refer to model_choice for supported models.
-    parser.add_argument("--model", type=str, default="gorilla-openfunctions-v2")
-    # Refer to test_categories for supported categories.
-    parser.add_argument("--test-category", type=str, default="all")
-
-    # Parameters for the model that you want to test.
-    parser.add_argument("--temperature", type=float, default=0.7)
-    parser.add_argument("--top-p", type=float, default=1)
-    parser.add_argument("--max-tokens", type=int, default=1200)
-    parser.add_argument("--num-gpus", default=1, type=int)
-    parser.add_argument("--timeout", default=60, type=int)
-    parser.add_argument("--gen-mode", default="conditional", type=str)
-
-    args = parser.parse_args()
-    return args
-
-
 test_categories = {
     "executable_simple": "gorilla_openfunctions_v1_test_executable_simple.json",
     "executable_parallel_function": "gorilla_openfunctions_v1_test_executable_parallel_function.json",
@@ -42,6 +22,41 @@ test_categories = {
     "rest": "gorilla_openfunctions_v1_test_rest.json",
     "sql": "gorilla_openfunctions_v1_test_sql.json",
 }
+
+
+def get_args():
+    parser = argparse.ArgumentParser()
+    # Refer to model_choice for supported models.
+    parser.add_argument("--model", type=str, default="gorilla-openfunctions-v2")
+    # Refer to test_categories for supported categories.
+    parser.add_argument("--test-category", type=str, default="all")
+
+    # Parameters for the model that you want to test.
+    parser.add_argument("--temperature", type=float, default=0.7)
+    parser.add_argument("--top-p", type=float, default=1)
+    parser.add_argument("--max-tokens", type=int, default=1200)
+    parser.add_argument("--num-gpus", default=1, type=int)
+    parser.add_argument("--timeout", default=60, type=int)
+    parser.add_argument("--gen-mode", default="conditional", type=str)
+    parser.add_argument("--limit", type=int, default=None, help="Number of samples to solve and evaluate from the benchmark")
+    parser.add_argument("--reset", action='store_true', help="Reset the number of saved options.")
+
+    args = parser.parse_args()
+    return args
+
+
+def get_num_existing_result(model, file_to_open, reset):
+    if reset:
+        num_existing_result = 0
+    else:
+        num_existing_result = 0  # if the result file already exists, skip the test cases that have been tested.
+        # path = f"./result/{model.replace('/', '_')}/{file_to_open.replace('.json', '_result.json')}"
+        path = f"./result/{model.replace('/', '_')}/{file_to_open}"
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                for line in f:
+                    num_existing_result += 1
+    return num_existing_result
 
 
 def build_handler(model_name, temperature, top_p, max_tokens, gen_mode):
@@ -82,23 +97,15 @@ if __name__ == "__main__":
             with open("./data/" + file_to_open) as f:
                 for line in f:
                     test_cases.append(json.loads(line))
-            num_existing_result = 0  # if the result file already exists, skip the test cases that have been tested.
-            if os.path.exists(
-                "./result/"
-                + args.model.replace("/", "_")
-                + "/"
-                + file_to_open
-                # + file_to_open.replace(".json", "_result.json")
-            ):
-                with open(
-                    "./result/"
-                    + args.model.replace("/", "_")
-                    + "/"
-                    + file_to_open
-                    # + file_to_open.replace(".json", "_result.json")
-                ) as f:
-                    for line in f:
-                        num_existing_result += 1
+            num_existing_result = get_num_existing_result(args.model, file_to_open, args.reset)
+
+
+            # limit = args.limit
+            # if limit is None:
+            #     limit = len(test_cases) - 1
+            # for index in range(num_existing_result, num_existing_result + limit + 1):
+            #     test_case = test_cases[index]
+
             for index, test_case in enumerate(tqdm(test_cases)):
                 if index < num_existing_result:
                     continue
