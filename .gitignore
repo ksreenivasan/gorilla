@@ -48,7 +48,7 @@ berkeley-function-call-leaderboard/data/gorilla_openfunctions_v1_test_executable
 berkeley-function-call-leaderboard/data/README.md
 
 # Ignore inference results
-berkeley-function-call-leaderboard/result/
+berkeley-function-call-leaderboard/result*
 
 # Ignore leaderboard score
-berkeley-function-call-leaderboard/score/
+berkeley-function-call-leaderboard/score*
