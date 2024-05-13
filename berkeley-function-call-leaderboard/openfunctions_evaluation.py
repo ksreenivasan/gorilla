@@ -41,19 +41,18 @@ def get_args():
     parser.add_argument("--limit", type=int, default=None, help="Number of samples to solve and evaluate from the benchmark")
     parser.add_argument("--limit-start", type=int, default=0, help="Optional offset to start from when limiting the number of samples")
     parser.add_argument("--reset", action='store_true', help="Reset the number of saved options.")
+    parser.add_argument("--output-dir", type=str, default="./outputs", help="Path for saving the output generations")
 
     args = parser.parse_args()
     return args
 
 
-def get_num_existing_result(model, file_to_open, reset):
-    # path = f"./result/{model.replace('/', '_')}/{file_to_open.replace('.json', '_result.json')}"
-    path = f"./result/{model.replace('/', '_')}/{file_to_open}"
+def get_num_existing_result(reset, path):
 
     if reset:
         num_existing_result = 0
         if os.path.exists(path):
-            with open(path, 'w') as f: # delete file
+            with open(path, 'w') as f: # overwrite file
                 pass
     else:
         num_existing_result = 0  # if the result file already exists, skip the test cases that have been tested.
@@ -81,11 +80,45 @@ def load_file(test_category):
     return test_cate, files_to_open
 
 
+def fingerprint(args, generations_dir):
+
+    fingerprint_path = os.path.join(generations_dir, "fingerprint.jsonl")
+
+    # Convert the args namespace to a dictionary
+    args_dict = vars(args)
+
+    # Create the parent directories if they don't exist
+    os.makedirs(os.path.dirname(fingerprint_path), exist_ok=True)
+
+    # values to record
+    write_values = ["model", "temperature", "top_p", "max_tokens", "gen_mode"]
+
+    # Open the output file in write mode
+    with open(fingerprint_path, 'w') as file:
+        # Write each argument as a JSON object on a new line
+        for key in write_values:
+            value = args_dict[key]
+            json_line = json.dumps({key: value})
+            file.write(json_line + '\n')
+
+
+def get_model_dir(args):
+    model_name_escaped = args.model.replace("/", "_")
+    _model_dir = f"{model_name_escaped}__{args.gen_mode}_{args.temperature}_{args.max_tokens}"
+    model_dir = os.path.join(args.output_dir, _model_dir)
+    return model_dir
+
+
 if __name__ == "__main__":
     args = get_args()
+    model_dir = get_model_dir(args)
+    generations_dir = os.path.join(model_dir, "generations")
+    fingerprint(args, model_dir)
+
     if USE_COHERE_OPTIMIZATION and "command-r-plus" in args.model:
         args.model = args.model + "-optimized"
     handler = build_handler(args.model, args.temperature, args.top_p, args.max_tokens, args.gen_mode)
+
     if handler.model_style == ModelStyle.OSSMODEL:
         result = handler.inference(
             question_file="eval_data_total.json",
@@ -102,13 +135,12 @@ if __name__ == "__main__":
             with open("./data/" + file_to_open) as f:
                 for line in f:
                     test_cases.append(json.loads(line))
-            num_existing_result = get_num_existing_result(args.model, file_to_open, args.reset)
-
+            generations_path = os.path.join(generations_dir, file_to_open)
+            num_existing_result = get_num_existing_result(generations_path, args.reset)
 
             n_tasks = min(args.limit, len(test_cases) - args.limit_start) if args.limit else len(test_cases)
             for index in tqdm(range(args.limit_start, args.limit_start + n_tasks)):
                 test_case = test_cases[index]
-
 
             # for index, test_case in enumerate(tqdm(test_cases)):
                 if index < num_existing_result:
@@ -128,4 +160,4 @@ if __name__ == "__main__":
                     result_to_write["messages"] = metadata["messages"]
                 if "tool_calls" in metadata:
                     result_to_write["tool_calls"] = metadata["tool_calls"]
-                handler.write(result_to_write, file_to_open)
+                handler.write(result_to_write, generations_path)

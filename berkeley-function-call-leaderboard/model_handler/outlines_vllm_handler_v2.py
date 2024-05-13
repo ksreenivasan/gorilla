@@ -125,16 +125,23 @@ class OutlinesVllmHandler(BaseHandler):
                 )
         return execution_list
 
-    def write(self, result, file_to_open):
+    def write(self, result, write_path):
         # if file_to_open[:-12] != "_result.json":
         #     file_to_open = file_to_open.replace(".json", "_result.json")
 
-        if not os.path.exists("./result"):
-            os.mkdir("./result")
-        if not os.path.exists("./result/" + self.model_name.replace("/", "_")):
-            os.mkdir("./result/" + self.model_name.replace("/", "_"))
-        with open("./result/" + self.model_name.replace("/", "_") + "/" + file_to_open, "a+") as f:
+        # Make path if it does not exist
+        os.makedirs(os.path.dirname(write_path), exist_ok=True)
+
+        # Write path
+        with open(write_path, "a+") as f:
             f.write(json.dumps(result) + "\n")
+
+        # if not os.path.exists("./result"):
+        #     os.mkdir("./result")
+        # if not os.path.exists("./result/" + self.model_name.replace("/", "_")):
+        #     os.mkdir("./result/" + self.model_name.replace("/", "_"))
+        # with open("./result/" + self.model_name.replace("/", "_") + "/" + file_to_open, "a+") as f:
+        #     f.write(json.dumps(result) + "\n")
 
     def load_result(self, test_category):
         # This method is used to load the result from the file.
