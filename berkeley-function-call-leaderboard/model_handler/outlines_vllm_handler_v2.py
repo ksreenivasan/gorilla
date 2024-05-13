@@ -72,7 +72,7 @@ class OutlinesVllmHandler(BaseHandler):
         except Exception as e:
             result = f'[error.message(error="{str(e)}")]'
             print(f"An error occurred: {str(e)}")
-            return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0, "messages": "", "tool_calls": []}
+            return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0, "n_tool_calls": self.n_tool_calls, "tool_calls": [], "messages": ""}
 
         # Prompt
         system_prompt = get_system_prompt(tool_schema)
@@ -95,11 +95,11 @@ class OutlinesVllmHandler(BaseHandler):
         except Exception as e:
             result = f'[error.message(error="{str(e)}")]'
             print(f"An error occurred: {str(e)}")
-            return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0, "messages": "", "tool_calls": []}
+            return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0,  "n_tool_calls": self.n_tool_calls, "tool_calls": [], "messages": ""}
 
         # Record info
         latency = time.time() - start
-        metadata = {"input_tokens": 0, "output_tokens": 0, "latency": latency, "messages": output_messages, "tool_calls": tool_calls}
+        metadata = {"input_tokens": 0, "output_tokens": 0, "latency": latency,  "n_tool_calls": self.n_tool_calls, "tool_calls": tool_calls, "messages": output_messages}
         return result, metadata
 
     def decode_ast(self, result, language="Python"):

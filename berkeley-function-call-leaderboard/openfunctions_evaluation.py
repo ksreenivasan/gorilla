@@ -160,4 +160,6 @@ if __name__ == "__main__":
                     result_to_write["messages"] = metadata["messages"]
                 if "tool_calls" in metadata:
                     result_to_write["tool_calls"] = metadata["tool_calls"]
+                if "n_tool_calls" in metadata:
+                    result_to_write["n_tool_calls"] = metadata["n_tool_calls"]
                 handler.write(result_to_write, generations_path)
