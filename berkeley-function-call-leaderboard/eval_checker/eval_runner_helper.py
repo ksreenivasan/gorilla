@@ -692,12 +692,12 @@ def record_cost_latency(leaderboard_table, model_name, model_output_data):
     for data in model_output_data:
         if "latency" in data:
             latency.append(data["latency"])
-            if data["latency"] > 60:
-                print("*" * 100)
-                print(
-                    f"❗️Warning: Latency for one of {model_name} response is {data['latency']}."
-                )
-                print("*" * 100)
+            # if data["latency"] > 60:
+            #     print("*" * 100)
+            #     print(
+            #         f"❗️Warning: Latency for one of {model_name} response is {data['latency']}."
+            #     )
+            #     print("*" * 100)
         if "input_token_count" in data:
             input_token.append(data["input_token_count"])
         if "output_token_count" in data:
