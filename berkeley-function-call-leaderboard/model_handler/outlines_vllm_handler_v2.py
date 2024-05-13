@@ -14,7 +14,7 @@ from openai import OpenAI
 from pydantic import BaseModel
 from tool_use.prompt import get_system_prompt
 from tool_use.schema import tools_to_schema
-from tool_use.tools import Tool
+from tool_use.tool import Tool
 
 from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_signature
 
@@ -89,13 +89,7 @@ class OutlinesVllmHandler(BaseHandler):
         # Generate tool calls
         try:
             start = time.time()
-            if self.gen_mode == "conditional":
-                output_messages, tool_calls = self.tool.conditional(messages, tools, n_tool_calls=self.n_tool_calls)
-            elif self.gen_mode == "structured":
-                output_messages, tool_calls = self.tool.structured(messages, tools, n_tool_calls=self.n_tool_calls)
-            elif self.gen_mode == "unstructured":
-                output_messages, tool_calls = self.tool.unstructured(messages)
-
+            output_messages, tool_calls = self.tool(messages, tools, gen_mode=self.gen_mode, n_tool_calls=self.n_tool_calls)
             result = bfcl_format(tool_calls)
         except Exception as e:
             result = f'[error.message(error="{str(e)}")]'
