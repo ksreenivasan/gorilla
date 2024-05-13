@@ -43,7 +43,7 @@ class OutlinesVllmHandler(BaseHandler):
         self.tool = Tool(self.base_url, self.api_key, self.model_name)
 
         self.idx = 0
-        self.solutions = None
+        self.solutions = []
 
     def load_solutions(self, test_category):
         test_category = test_category.replace("executable_", "")
@@ -60,16 +60,16 @@ class OutlinesVllmHandler(BaseHandler):
 
     def inference(self, user_query, tools, test_category):
 
-        # get number of tool calls from the solution
-        if self.solutions is None:
-            self.solutions = self.load_solutions(test_category)
-        self.n_tool_calls = len(self.solutions[self.idx])
-        self.idx += 1
-
         # reset when at the last example in solutions
         if self.idx == len(self.solutions):
             self.idx = 0
-            self.solutions = None
+            self.solutions = []
+
+        # get number of tool calls from the solution
+        if not self.solutions:
+            self.solutions = self.load_solutions(test_category)
+        self.n_tool_calls = len(self.solutions[self.idx])
+        self.idx += 1
 
         # Get schema for tool use
         try:
