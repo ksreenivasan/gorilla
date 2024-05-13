@@ -30,10 +30,12 @@ class OutlinesVllmHandler(BaseHandler):
         seed=42,
         gen_mode="conditional",
         n_tool_calls=1,
+        n_tool_calls_mode="solution",
         ) -> None:
 
         self.model_style = ModelStyle.Outlines
         self.n_tool_calls = n_tool_calls
+        self.n_tool_calls_mode = n_tool_calls_mode
         self.gen_mode = gen_mode
         super().__init__(model_name, temperature, top_p, max_tokens)
 
@@ -42,34 +44,38 @@ class OutlinesVllmHandler(BaseHandler):
         self.api_key = "-"
         self.tool = Tool(self.base_url, self.api_key, self.model_name)
 
-        self.idx = 0
-        self.solutions = []
-
-    def load_solutions(self, test_category):
+    def load_solution(self, user_query, test_category):
         test_category = test_category.replace("executable_", "")
         solutions_path = f"./data/possible_answer/gorilla_openfunctions_v1_test_{test_category}.json"
-        if not os.path.exists(solutions_path): # relevance tests
-            solutions = [(0, 1)] * 400
-            return solutions
+        questions_path = f"./data/gorilla_openfunctions_v1_test_{test_category}.json"
 
-        solutions = []
+        # Find the index where the question matches the user query
+        question_idx = 0
+        with open(questions_path, "r") as f:
+            for line in f:
+                question = json.loads(line)["question"]
+                if question == user_query:
+                    break
+                question_idx += 1
+
+        # Get solution located at question_idx
+        solution_idx = 0
+        solution = {}
         with open(solutions_path, "r") as f:
             for line in f:
-                solutions.append(json.loads(line))
-        return solutions
+                if solution_idx == question_idx:
+                    solution = json.loads(line)
+                    break
+                solution_idx += 1
+
+        return solution
 
     def inference(self, user_query, tools, test_category):
 
-        # reset when at the last example in solutions
-        if self.idx == len(self.solutions):
-            self.idx = 0
-            self.solutions = []
-
-        # get number of tool calls from the solution
-        if not self.solutions:
-            self.solutions = self.load_solutions(test_category)
-        self.n_tool_calls = len(self.solutions[self.idx])
-        self.idx += 1
+        # get n_tool_calls
+        if self.n_tool_calls_mode == "solution":
+            self.solution = self.load_solution(user_query, test_category)
+            self.n_tool_calls = len(self.solution)
 
         # Get schema for tool use
         try:
