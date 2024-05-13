@@ -47,19 +47,19 @@ def get_args():
     return args
 
 
-def get_num_existing_result(reset, path):
+def get_num_existing_result(path, reset):
+
+    num_existing_result = 0
+    if not os.path.exists(path):
+        return num_existing_result
 
     if reset:
-        num_existing_result = 0
-        if os.path.exists(path):
-            with open(path, 'w') as f: # overwrite file
-                pass
+        os.remove(path)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
     else:
-        num_existing_result = 0  # if the result file already exists, skip the test cases that have been tested.
-        if os.path.exists(path):
-            with open(path, "r") as f:
-                for line in f:
-                    num_existing_result += 1
+        with open(path, "r") as f:
+            for line in f:
+                num_existing_result += 1
     return num_existing_result
 
 
