@@ -39,6 +39,7 @@ def get_args():
     parser.add_argument("--timeout", default=60, type=int)
     parser.add_argument("--gen-mode", default="conditional", type=str)
     parser.add_argument("--limit", type=int, default=None, help="Number of samples to solve and evaluate from the benchmark")
+    parser.add_argument("--limit-start", type=int, default=0, help="Optional offset to start from when limiting the number of samples")
     parser.add_argument("--reset", action='store_true', help="Reset the number of saved options.")
 
     args = parser.parse_args()
@@ -46,12 +47,16 @@ def get_args():
 
 
 def get_num_existing_result(model, file_to_open, reset):
+    # path = f"./result/{model.replace('/', '_')}/{file_to_open.replace('.json', '_result.json')}"
+    path = f"./result/{model.replace('/', '_')}/{file_to_open}"
+
     if reset:
         num_existing_result = 0
+        if os.path.exists(path):
+            with open(path, 'w') as f: # delete file
+                pass
     else:
         num_existing_result = 0  # if the result file already exists, skip the test cases that have been tested.
-        # path = f"./result/{model.replace('/', '_')}/{file_to_open.replace('.json', '_result.json')}"
-        path = f"./result/{model.replace('/', '_')}/{file_to_open}"
         if os.path.exists(path):
             with open(path, "r") as f:
                 for line in f:
@@ -100,13 +105,12 @@ if __name__ == "__main__":
             num_existing_result = get_num_existing_result(args.model, file_to_open, args.reset)
 
 
-            # limit = args.limit
-            # if limit is None:
-            #     limit = len(test_cases) - 1
-            # for index in range(num_existing_result, num_existing_result + limit + 1):
-            #     test_case = test_cases[index]
+            n_tasks = min(args.limit, len(test_cases) - args.limit_start) if args.limit else len(test_cases)
+            for index in tqdm(range(args.limit_start, args.limit_start + n_tasks)):
+                test_case = test_cases[index]
 
-            for index, test_case in enumerate(tqdm(test_cases)):
+
+            # for index, test_case in enumerate(tqdm(test_cases)):
                 if index < num_existing_result:
                     continue
                 user_question, functions = test_case["question"], test_case["function"]
