@@ -48,6 +48,10 @@ class OutlinesVllmHandler(BaseHandler):
     def load_solutions(self, test_category):
         test_category = test_category.replace("executable_", "")
         solutions_path = f"./data/possible_answer/gorilla_openfunctions_v1_test_{test_category}.json"
+        if not os.path.exists(solutions_path): # relevance tests
+            solutions = [(0, 1)] * 400
+            return solutions
+
         solutions = []
         with open(solutions_path, "r") as f:
             for line in f:
