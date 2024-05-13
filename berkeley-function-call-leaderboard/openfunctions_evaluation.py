@@ -75,6 +75,12 @@ def load_file(test_category):
         test_cate, files_to_open = list(test_categories.keys()), list(
             test_categories.values()
         )
+    elif test_category == "ast":
+        test_cate = ["simple", "parallel_function", "multiple_function", "parallel_multiple_function"]
+        files_to_open = [test_categories[cat] for cat in test_cate]
+    elif test_category == "executable":
+        test_cate = ["executable_simple", "executable_parallel_function", "executable_multiple_function", "executable_parallel_multiple_function"]
+        files_to_open = [test_categories[cat] for cat in test_cate]
     else:
         test_cate, files_to_open = [test_category], [test_categories[test_category]]
     return test_cate, files_to_open
