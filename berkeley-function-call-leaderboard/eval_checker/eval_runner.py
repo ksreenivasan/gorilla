@@ -3,6 +3,7 @@ import sys
 sys.path.append("../")
 
 import argparse
+import warnings
 
 from checker import ast_checker, exec_checker, executable_checker_rest
 from eval_runner_helper import *
@@ -114,7 +115,7 @@ def single_executable_file_runner(
     return accuracy, len(model_result)
 
 
-def single_relevance_file_runner(handler, model_result, model_name, test_category):
+def single_relevance_file_runner(handler, model_result, model_name, test_category, fingerprint):
 
     result = []
     correct_count = 0
@@ -166,11 +167,16 @@ def single_relevance_file_runner(handler, model_result, model_name, test_categor
 
 
 def single_ast_file_runner(
-    handler, model_result, prompt, possible_answer, language, test_category, model_name
+    handler, model_result, prompt, possible_answer, language, test_category, model_name, fingerprint
 ):
+    if len(model_result) != len(prompt) or len(model_result) != len(possible_answer):
+        warnings.warn(
+            f"The length of the model result ({len(model_result)}) does not match the length of the prompt ({len(prompt)}) or possible answer ({len(possible_answer)}).",
+            )
+    n_tasks = min(fingerprint["limit"], len(prompt) - fingerprint["limit_start"]) if fingerprint["limit"] else len(prompt)
     assert (
-        len(model_result) == len(prompt) == len(possible_answer)
-    ), "The length of the model result does not match the length of the prompt or possible answer. Please check the input files for completeness."
+        len(model_result) == n_tasks
+    ), f"Your model only has {len(model_result)} results even though fingerprint.jsonl says your model has {n_tasks} results. Please check the input files for completeness."
 
     result = []
     correct_count = 0
@@ -260,7 +266,7 @@ def single_ast_file_runner(
 
 
 #### Main runner function ####
-def runner(model_names, test_categories, api_sanity_check):
+def runner(model_names, test_categories, api_sanity_check, output_dir):
 
     # A flag to indicate if the API has been tested.
     # We should always test the API with ground truth first before running the executable tests.
@@ -272,27 +278,28 @@ def runner(model_names, test_categories, api_sanity_check):
     # We only get the expected output once for each test category.
     EXECUTABLE_TEST_CATEGORIES_HAVE_RUN = []
 
-    # Get a list of all entries in the folder
-    entries = os.scandir(INPUT_PATH)
+    # Get a list of all outputs
+    subdirs = [
+        os.path.join(output_dir, item) for item in os.listdir(output_dir)
+        if os.path.isdir(os.path.join(output_dir, item))
+        ]
 
-    # Filter out the subdirectories
-    subdirs = [entry.path for entry in entries if entry.is_dir()]
 
     # Traverse each subdirectory
     for subdir in subdirs:
 
-        model_name = subdir.split(INPUT_PATH)[1]
-        model_name = model_name.replace("_", "/")
+        model_path = subdir.split("/")[-1]
+        model_name = model_path.split("__")[0].replace("_", "/")
         if model_names is not None and model_name not in model_names:
             continue
 
-        model_name_escaped = model_name.replace("_", "/")
-
+        generations_dir = os.path.join(subdir, "generations")
         files = [
             f
-            for f in os.listdir(subdir)
-            if os.path.isfile(os.path.join(subdir, f)) and not f.startswith(".")
+            for f in os.listdir(generations_dir)
+            if os.path.isfile(os.path.join(generations_dir, f)) and not f.startswith(".")
         ]
+
         # Check if there is only one file and that file is 'result.json'
         # If so, this is an OSS model result file and we need to special process it first
         if len(files) == 1 and files[0] == "result.json":
@@ -302,8 +309,15 @@ def runner(model_names, test_categories, api_sanity_check):
                 f"Detected OSS model: {model_name}. result.json has been split into individual test category files."
             )
 
+        # load fingerprint
+        fingerprint = {}
+        fingerprint_path = os.path.join(subdir, "fingerprint.jsonl")
+        with open(fingerprint_path, "r") as f:
+            for line in f:
+                fingerprint |= json.loads(line)
+
         # Pattern to match JSON files in this subdirectory
-        json_files_pattern = os.path.join(subdir, "*.json")
+        json_files_pattern = os.path.join(generations_dir, "*.json")
 
         print(f"🦍 Model: {model_name}")
 
@@ -317,7 +331,7 @@ def runner(model_names, test_categories, api_sanity_check):
             if test_categories is not None and test_category not in test_categories:
                 continue
 
-            handler = get_handler(model_name_escaped)
+            handler = get_handler(model_name)
 
             # We don't evaluate chatable and SQL models in our current leaderboard
             if is_chatable(test_category) or is_sql(test_category):
@@ -336,7 +350,7 @@ def runner(model_names, test_categories, api_sanity_check):
 
             if is_relevance(test_category):
                 accuracy, total_count = single_relevance_file_runner(
-                    handler, model_result, model_name, test_category
+                    handler, model_result, model_name, test_category, fingerprint
                 )
                 record_result(
                     LEADERBOARD_TABLE, model_name, test_category, accuracy, total_count
@@ -395,6 +409,7 @@ def runner(model_names, test_categories, api_sanity_check):
                 language,
                 test_category,
                 model_name,
+                fingerprint,
             )
             record_result(
                 LEADERBOARD_TABLE, model_name, test_category, accuracy, total_count
@@ -464,7 +479,6 @@ ARG_PARSE_MAPPING = {
 }
 
 
-INPUT_PATH = "../result/"
 PROMPT_PATH = "../data/"
 POSSIBLE_ANSWER_PATH = "../data/possible_answer/"
 OUTPUT_PATH = "../score/"
@@ -494,6 +508,7 @@ if __name__ == "__main__":
         default=True,  # Default value is True, meaning the sanity check is performed unless the flag is specified
         help="Skip the REST API status sanity check before running the evaluation. By default, the sanity check is performed.",
     )
+    parser.add_argument("--output-dir", type=str, default="../outputs", help="Path for saving the outputs")
 
     args = parser.parse_args()
 
@@ -508,4 +523,4 @@ if __name__ == "__main__":
             else:
                 test_categories.append(test_category)
 
-    runner(model_names, test_categories, api_sanity_check)
+    runner(model_names, test_categories, api_sanity_check, args.output_dir)
