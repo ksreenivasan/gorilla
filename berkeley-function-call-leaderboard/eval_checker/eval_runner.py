@@ -120,8 +120,7 @@ def single_executable_file_runner(
     )
 
     output_file_name = test_category + "_score.json"
-    output_file_dir = os.path.join(score_dir, model_name)
-    write_list_of_dicts_to_file(output_file_name, result, output_file_dir)
+    write_list_of_dicts_to_file(output_file_name, result, score_dir)
 
     return accuracy, len(model_result)
 
@@ -172,8 +171,7 @@ def single_relevance_file_runner(handler, model_result, model_name, test_categor
     )
 
     output_file_name = test_category + "_score.json"
-    output_file_dir = os.path.join(score_dir, model_name)
-    write_list_of_dicts_to_file(output_file_name, result, output_file_dir)
+    write_list_of_dicts_to_file(output_file_name, result, score_dir)
 
     return accuracy, len(model_result)
 
@@ -272,8 +270,7 @@ def single_ast_file_runner(
     )
 
     output_file_name = test_category + "_score.json"
-    output_file_dir = os.path.join(score_dir, model_name)
-    write_list_of_dicts_to_file(output_file_name, result, output_file_dir)
+    write_list_of_dicts_to_file(output_file_name, result, score_dir)
 
     return accuracy, len(model_result)
 
