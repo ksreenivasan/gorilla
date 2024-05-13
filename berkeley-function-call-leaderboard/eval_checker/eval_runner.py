@@ -331,6 +331,7 @@ def runner(model_names, test_categories, api_sanity_check, output_dir):
         # Pattern to match JSON files in this subdirectory
         json_files_pattern = os.path.join(generations_dir, "*.json")
 
+        print("\n", "-"*80)
         print(f"🦍 Model: {model_name} ({model_args.replace('_', ', ')})")
 
         # Find and process all JSON files in the subdirectory
