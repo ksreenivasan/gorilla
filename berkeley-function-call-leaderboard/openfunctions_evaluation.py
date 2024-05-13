@@ -91,7 +91,7 @@ def fingerprint(args, generations_dir):
     os.makedirs(os.path.dirname(fingerprint_path), exist_ok=True)
 
     # values to record
-    write_values = ["model", "temperature", "top_p", "max_tokens", "gen_mode"]
+    write_values = ["model", "temperature", "top_p", "max_tokens", "gen_mode", "limit", "limit_start"]
 
     # Open the output file in write mode
     with open(fingerprint_path, 'w') as file:
