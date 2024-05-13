@@ -13,9 +13,19 @@ from tqdm import tqdm
 
 
 def single_executable_file_runner(
-    handler, model_result, prompt, model_name, test_category
+    handler, model_result, prompt, model_name, test_category, fingerprint, score_dir,
 ):
     assert len(model_result) == len(prompt)
+
+    if len(model_result) != len(prompt):
+        warnings.warn(
+            f"The length of the model result ({len(model_result)}) does not match the length of the prompt ({len(prompt)}).",
+            )
+    n_tasks = min(fingerprint["limit"], len(prompt) - fingerprint["limit_start"]) if fingerprint["limit"] else len(prompt)
+    assert (
+        len(model_result) == n_tasks
+    ), f"Your model only has {len(model_result)} results even though fingerprint.jsonl says your model has {n_tasks} results. Please check the input files for completeness."
+
 
     result = []
     correct_count = 0
@@ -108,14 +118,15 @@ def single_executable_file_runner(
             "total_count": len(model_result),
         },
     )
+
     output_file_name = test_category + "_score.json"
-    output_file_dir = os.path.join(OUTPUT_PATH, model_name)
+    output_file_dir = os.path.join(score_dir, model_name)
     write_list_of_dicts_to_file(output_file_name, result, output_file_dir)
 
     return accuracy, len(model_result)
 
 
-def single_relevance_file_runner(handler, model_result, model_name, test_category, fingerprint):
+def single_relevance_file_runner(handler, model_result, model_name, test_category, fingerprint, score_dir):
 
     result = []
     correct_count = 0
@@ -159,15 +170,16 @@ def single_relevance_file_runner(handler, model_result, model_name, test_categor
             "total_count": len(model_result),
         },
     )
+
     output_file_name = test_category + "_score.json"
-    output_file_dir = os.path.join(OUTPUT_PATH, model_name)
+    output_file_dir = os.path.join(score_dir, model_name)
     write_list_of_dicts_to_file(output_file_name, result, output_file_dir)
 
     return accuracy, len(model_result)
 
 
 def single_ast_file_runner(
-    handler, model_result, prompt, possible_answer, language, test_category, model_name, fingerprint
+    handler, model_result, prompt, possible_answer, language, test_category, model_name, fingerprint, score_dir
 ):
     if len(model_result) != len(prompt) or len(model_result) != len(possible_answer):
         warnings.warn(
@@ -258,8 +270,9 @@ def single_ast_file_runner(
             "total_count": len(model_result),
         },
     )
+
     output_file_name = test_category + "_score.json"
-    output_file_dir = os.path.join(OUTPUT_PATH, model_name)
+    output_file_dir = os.path.join(score_dir, model_name)
     write_list_of_dicts_to_file(output_file_name, result, output_file_dir)
 
     return accuracy, len(model_result)
@@ -289,6 +302,7 @@ def runner(model_names, test_categories, api_sanity_check, output_dir):
     for subdir in subdirs:
 
         model_path = subdir.split("/")[-1]
+        score_dir = os.path.join(subdir, "scores")
         model_name = model_path.split("__")[0].replace("_", "/")
         if model_names is not None and model_name not in model_names:
             continue
@@ -350,7 +364,7 @@ def runner(model_names, test_categories, api_sanity_check, output_dir):
 
             if is_relevance(test_category):
                 accuracy, total_count = single_relevance_file_runner(
-                    handler, model_result, model_name, test_category, fingerprint
+                    handler, model_result, model_name, test_category, fingerprint, score_dir,
                 )
                 record_result(
                     LEADERBOARD_TABLE, model_name, test_category, accuracy, total_count
@@ -387,7 +401,7 @@ def runner(model_names, test_categories, api_sanity_check, output_dir):
                     prompt = load_file(prompt_file)
 
                 accuracy, total_count = single_executable_file_runner(
-                    handler, model_result, prompt, model_name, test_category
+                    handler, model_result, prompt, model_name, test_category, fingerprint, score_dir,
                 )
                 record_result(
                     LEADERBOARD_TABLE, model_name, test_category, accuracy, total_count
@@ -410,6 +424,7 @@ def runner(model_names, test_categories, api_sanity_check, output_dir):
                 test_category,
                 model_name,
                 fingerprint,
+                score_dir,
             )
             record_result(
                 LEADERBOARD_TABLE, model_name, test_category, accuracy, total_count
@@ -418,9 +433,9 @@ def runner(model_names, test_categories, api_sanity_check, output_dir):
 
     # This function reads all the score files from local folder and updates the leaderboard table.
     # This is helpful when you only want to run the evaluation for a subset of models and test categories.
-    update_leaderboard_table_with_score_file(LEADERBOARD_TABLE, OUTPUT_PATH)
+    update_leaderboard_table_with_score_file(LEADERBOARD_TABLE, score_dir)
     # Write the leaderboard table to a file
-    generate_leaderboard_csv(LEADERBOARD_TABLE, OUTPUT_PATH)
+    generate_leaderboard_csv(LEADERBOARD_TABLE, score_dir)
 
     # Clean up the executable expected output files
     # They should be re-generated the next time the evaluation is run
@@ -481,7 +496,6 @@ ARG_PARSE_MAPPING = {
 
 PROMPT_PATH = "../data/"
 POSSIBLE_ANSWER_PATH = "../data/possible_answer/"
-OUTPUT_PATH = "../score/"
 
 # A dictionary to store the results
 # Key is model name, value is a dictionary with keys as test category and values as a dictionary with accuracy and total count
