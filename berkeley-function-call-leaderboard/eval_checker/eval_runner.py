@@ -299,6 +299,7 @@ def runner(model_names, test_categories, api_sanity_check, output_dir):
     for subdir in subdirs:
 
         model_path = subdir.split("/")[-1]
+        model_args = model_path.split("__")[1]
         score_dir = os.path.join(subdir, "scores")
         model_name = model_path.split("__")[0].replace("_", "/")
         if model_names is not None and model_name not in model_names:
@@ -330,7 +331,7 @@ def runner(model_names, test_categories, api_sanity_check, output_dir):
         # Pattern to match JSON files in this subdirectory
         json_files_pattern = os.path.join(generations_dir, "*.json")
 
-        print(f"🦍 Model: {model_name}")
+        print(f"🦍 Model: {model_name} ({model_args.replace('_', ', ')})")
 
         # Find and process all JSON files in the subdirectory
         for model_result_json in glob.glob(json_files_pattern):
