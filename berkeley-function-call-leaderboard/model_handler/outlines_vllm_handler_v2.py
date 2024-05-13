@@ -66,6 +66,11 @@ class OutlinesVllmHandler(BaseHandler):
         self.n_tool_calls = len(self.solutions[self.idx])
         self.idx += 1
 
+        # reset when at the last example in solutions
+        if self.idx == len(self.solutions):
+            self.idx = 0
+            self.solutions = None
+
         # Get schema for tool use
         try:
             tool_schema = tools_to_schema(tools)
