@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import re
 
 from model_handler.constant import USE_COHERE_OPTIMIZATION
 from model_handler.handler_map import handler_map
@@ -35,13 +36,15 @@ def get_args():
     parser.add_argument("--temperature", type=float, default=0.7)
     parser.add_argument("--top-p", type=float, default=1)
     parser.add_argument("--max-tokens", type=int, default=1200)
-    parser.add_argument("--num-gpus", default=1, type=int)
-    parser.add_argument("--timeout", default=60, type=int)
     parser.add_argument("--gen-mode", default="conditional", type=str)
     parser.add_argument("--limit", type=int, default=None, help="Number of samples to solve and evaluate from the benchmark")
     parser.add_argument("--limit-start", type=int, default=0, help="Optional offset to start from when limiting the number of samples")
+    parser.add_argument("--n-tool-calls", default="solution", help="Should be either 'solution, 'auto', an int, or a tuple of ints.")
+
     parser.add_argument("--reset", action='store_true', help="Reset the number of saved options.")
     parser.add_argument("--output-dir", type=str, default="./outputs", help="Path for saving the output generations")
+    parser.add_argument("--num-gpus", default=1, type=int)
+    parser.add_argument("--timeout", default=60, type=int)
 
     args = parser.parse_args()
     return args
@@ -63,10 +66,28 @@ def get_num_existing_result(path, reset):
     return num_existing_result
 
 
-def build_handler(model_name, temperature, top_p, max_tokens, gen_mode):
+def extract_tuple(text):
+    pattern = r'\((\-?\d+),\s*(\-?\d+)\)'
+    match = re.search(pattern, text)
+    if match:
+        num1 = int(match.group(1))
+        num2 = int(match.group(2))
+        return (num1, num2)
+    else:
+        return False
+
+
+def build_handler(model_name, temperature, top_p, max_tokens, gen_mode, n_tool_calls):
     handler = handler_map[model_name](model_name, temperature, top_p, max_tokens)
     if "gen_mode" in vars(handler):
         handler.gen_mode = gen_mode
+    if "_n_tool_calls" in vars(handler):
+        if n_tool_calls in ["solution", "auto"]:
+            handler._n_tool_calls = n_tool_calls
+        elif sum([char.isdigit() for char in n_tool_calls]) == len(n_tool_calls):
+            handler._n_tool_calls = int(n_tool_calls)
+        elif extract_tuple(n_tool_calls):
+            handler._n_tool_calls = extract_tuple(n_tool_calls)
     return handler
 
 
@@ -97,7 +118,7 @@ def fingerprint(args, generations_dir):
     os.makedirs(os.path.dirname(fingerprint_path), exist_ok=True)
 
     # values to record
-    write_values = ["model", "temperature", "top_p", "max_tokens", "gen_mode", "limit", "limit_start"]
+    write_values = ["model", "temperature", "top_p", "max_tokens", "gen_mode", "limit", "limit_start", "n_tool_calls"]
 
     # Open the output file in write mode
     with open(fingerprint_path, 'w') as file:
@@ -110,7 +131,7 @@ def fingerprint(args, generations_dir):
 
 def get_model_dir(args):
     model_name_escaped = args.model.replace("/", "_")
-    _model_dir = f"{model_name_escaped}__{args.gen_mode}_{args.temperature}_{args.max_tokens}"
+    _model_dir = f"{model_name_escaped}__{args.gen_mode}_{args.n_tool_calls}_{args.temperature}_{args.max_tokens}_{args.top_p}"
     model_dir = os.path.join(args.output_dir, _model_dir)
     return model_dir
 
@@ -123,7 +144,7 @@ if __name__ == "__main__":
 
     if USE_COHERE_OPTIMIZATION and "command-r-plus" in args.model:
         args.model = args.model + "-optimized"
-    handler = build_handler(args.model, args.temperature, args.top_p, args.max_tokens, args.gen_mode)
+    handler = build_handler(args.model, args.temperature, args.top_p, args.max_tokens, args.gen_mode, args.n_tool_calls)
 
     if handler.model_style == ModelStyle.OSSMODEL:
         result = handler.inference(
