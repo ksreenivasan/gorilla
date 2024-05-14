@@ -4,6 +4,17 @@ import json
 import os
 
 
+def get_directories(path):
+    directories = []
+
+    for item in os.listdir(path):
+        item_path = os.path.join(path, item)
+        if os.path.isdir(item_path):
+            directories.append(item_path)
+
+    return directories
+
+
 def get_files(path):
     file_list = []
     for root, dirs, files in os.walk(path):
@@ -96,7 +107,7 @@ def get_args():
     parser = argparse.ArgumentParser(description='Process model directory and output directory.')
 
     # Add arguments
-    parser.add_argument('--model_dir', type=str, required=True,
+    parser.add_argument('--out-dir', type=str, required=True,
                         help='Path to the directory containing the model files.')
 
     # Parse the arguments
@@ -104,30 +115,35 @@ def get_args():
     return args
 
 def main():
+    print("hi")
 
     # Load args
     args = get_args()
-    model_dir = args.model_dir
-    out_dir = model_dir.replace("auto", "auto-dedup").replace("solution", "solution-dedup")
+    model_dirs = get_directories(args.out_dir)
+    print(model_dirs)
 
-    # Get generation paths
-    generations_dir = os.path.join(model_dir, "generations")
-    generations_paths = get_files(generations_dir)
+    # Loop over all model dirs
+    for model_dir in model_dirs:
 
-    # Fingerprint
-    new_fingerprint(model_dir, out_dir)
+        # New paths
+        new_model_dir = model_dir.replace("auto", "auto-dedup").replace("solution", "solution-dedup")
+        generations_dir = os.path.join(model_dir, "generations")
+        generations_paths = get_files(generations_dir)
 
-    for generations_path in generations_paths:
+        # Fingerprint
+        new_fingerprint(model_dir, new_model_dir)
 
-        # Load generations
-        generations = get_generations(generations_path)
+        for generations_path in generations_paths:
 
-        # Make new generations
-        new_generations = get_new_generations(generations)
+            # Load generations
+            generations = get_generations(generations_path)
 
-        # Save new generations
-        save_new_generations(out_dir, generations_path, new_generations)
+            # Make new generations
+            new_generations = get_new_generations(generations)
+
+            # Save new generations
+            save_new_generations(new_model_dir, generations_path, new_generations)
 
 
-if __name__ == "__main__":
-    main()
+    if __name__ == "__main__":
+        main()
