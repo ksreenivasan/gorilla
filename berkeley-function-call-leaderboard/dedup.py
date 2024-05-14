@@ -145,5 +145,5 @@ def main():
             save_new_generations(new_model_dir, generations_path, new_generations)
 
 
-    if __name__ == "__main__":
-        main()
+if __name__ == "__main__":
+    main()
