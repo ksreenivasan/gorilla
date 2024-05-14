@@ -5,7 +5,7 @@ from datetime import datetime
 from tqdm import tqdm
 from model_handler.handler_map import handler_map
 from model_handler.model_style import ModelStyle
-from utils.cloud_utils import upload_dir, BASE_S3_DIR
+# from utils.cloud_utils import upload_dir, BASE_S3_DIR
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -41,6 +41,19 @@ test_categories = {
     "sql": "gorilla_openfunctions_v1_test_sql.json",
 }
 
+no_parallel = {
+    "executable_simple": "gorilla_openfunctions_v1_test_executable_simple.json",
+    "executable_multiple_function": "gorilla_openfunctions_v1_test_executable_multiple_function.json",
+    "simple": "gorilla_openfunctions_v1_test_simple.json",
+    "relevance": "gorilla_openfunctions_v1_test_relevance.json",
+    "multiple_function": "gorilla_openfunctions_v1_test_multiple_function.json",
+    "java": "gorilla_openfunctions_v1_test_java.json",
+    "javascript": "gorilla_openfunctions_v1_test_javascript.json",
+    "rest": "gorilla_openfunctions_v1_test_rest.json",
+    "sql": "gorilla_openfunctions_v1_test_sql.json",
+}
+
+
 def build_handler(model_name, temperature, top_p, max_tokens):
     handler = handler_map[model_name](model_name, temperature, top_p, max_tokens)
     return handler
@@ -48,6 +61,8 @@ def build_handler(model_name, temperature, top_p, max_tokens):
 def load_file(test_category):
     if test_category == "all":
         test_cate,files_to_open = list(test_categories.keys()),list(test_categories.values())
+    if test_category == "no-parallel":
+        test_cate,files_to_open = list(no_parallel.keys()),list(no_parallel.values())
     elif test_category == "no-multiple":
         no_multiple_cats = [cat for cat in test_categories.keys() if "multiple" not in cat]
         test_cate,files_to_open = no_multiple_cats,[test_categories[cat] for cat in no_multiple_cats]
@@ -99,14 +114,14 @@ if __name__ == "__main__":
                 }
                 handler.write(result_to_write, file_to_open)
 
-    # Upload results to the cloud
-    # TODO: this is not being used right now. Using utils/upload_to_cloud.py instead
-    if args.upload_dir:
-        for local_dir in ["./result", "./score"]:
+    # # Upload results to the cloud
+    # # TODO: this is not being used right now. Using utils/upload_to_cloud.py instead
+    # if args.upload_dir:
+    #     for local_dir in ["./result", "./score"]:
 
-            s3_dir = args.upload_dir
-            if "s3://" not in s3_dir: # use args.upload_dir like its the run name
-                date_str = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-                s3_dir = os.path.join(BASE_S3_DIR, f"{date_str}--{s3_dir}")
+    #         s3_dir = args.upload_dir
+    #         if "s3://" not in s3_dir: # use args.upload_dir like its the run name
+    #             date_str = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    #             s3_dir = os.path.join(BASE_S3_DIR, f"{date_str}--{s3_dir}")
 
-            upload_dir(local_dir, s3_dir)
+    #         upload_dir(local_dir, s3_dir)

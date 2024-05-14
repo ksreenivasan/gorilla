@@ -20,6 +20,8 @@ import re
 import os
 import json
 
+from tool_use.tool import Tool
+
 
 class DatabricksHandler(BaseHandler):
     def __init__(self, model_name, temperature=0.7, top_p=1, max_tokens=1000) -> None:
@@ -29,11 +31,12 @@ class DatabricksHandler(BaseHandler):
         self.top_p = top_p
         self.max_tokens = max_tokens
 
-        # NOTE: To run the Databricks model, you need to provide your own Databricks API key and your own Azure endpoint URL.
-        self.client = OpenAI(
-            api_key=os.environ["DATABRICKS_API_KEY"],
-            base_url=os.environ["DATABRICKS_ENDPOINT_URL"],
-        )
+        # # NOTE: To run the Databricks model, you need to provide your own Databricks API key and your own Azure endpoint URL.
+        # self.client = OpenAI(
+        #     api_key=os.environ["DATABRICKS_API_KEY"],
+        #     base_url=os.environ["DATABRICKS_ENDPOINT_URL"],
+        # )
+        self.tool = Tool("http://localhost:8080/v1", "-", "databricks/dbrx-instruct")
 
     def inference(self, prompt, functions, test_category):
         # TODO: do this more elegantly
@@ -53,23 +56,15 @@ class DatabricksHandler(BaseHandler):
                 },
             ]
             start_time = time.time()
-            response = self.client.chat.completions.create(
-                messages=message,
-                model=self.model_name,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                top_p=self.top_p,
-            )
             latency = time.time() - start_time
-            result = response.choices[0].message.content
+            # result = response.choices[0].message.content
         else:
             # TODO: see if this is necessary. they do it for openai models
             # prompt = augment_prompt_by_languge(prompt, test_category)
             functions = language_specific_pre_processing(functions, test_category, True)
             if type(functions) is not list:
                 functions = [functions]
-            message = [{"role": "system", "content": SYSTEM_PROMPT_FOR_CHAT_MODEL_FC.format(functions=str(functions))},
-                       {"role": "user", "content": prompt}]
+            message = [{"role": "user", "content": prompt}]
 
             # NOTE: since we're using the deprecated function_call api, we don't
             # need to convert it to "tools". But this method also modifies the functions
@@ -82,17 +77,10 @@ class DatabricksHandler(BaseHandler):
             start_time = time.time()
             if len(functions) > 0:
                 try:
-                    response = self.client.chat.completions.create(
-                        messages=message,
-                        model=self.model_name.replace("-FC", ""),
-                        temperature=self.temperature,
-                        max_tokens=self.max_tokens,
-                        top_p=self.top_p,
-                        tools=oai_tool,
-                        tool_choice='auto', # this is important as it let's the model decide when to use FC
-                        # functions=functions,
-                        # function_call='auto', # this is important as it let's the model decide when to use FC
-                    )
+                    print(message, oai_tool)
+                    tool_use_tool = [ i.get("function") for i in oai_tool]
+                    output_messages, tool_calls = self.tool(message, tool_use_tool, gen_mode="meta_tool", n_tool_calls=1)
+                    print(f"\nTool calls: {tool_calls}\n")
                 except Exception as e:
                     print(f"\nError while trying to do FC: {e}\n")
                     print(f"Messages={message}")
@@ -103,35 +91,37 @@ class DatabricksHandler(BaseHandler):
                 print(f"Kartik: BFCL decided to not use the tool. Dig.")
                 print(f"Prompt = {prompt}")
                 print(f"Functions = {functions}")
-                response = self.client.chat.completions.create(
-                    messages=message,
-                    model=self.model_name.replace("-FC", ""),
-                    temperature=self.temperature,
-                    max_tokens=self.max_tokens,
-                    top_p=self.top_p,
-                )
+                tool_calls = []
+                # TODO: have something here
+                # response = self.client.chat.completions.create(
+                #     messages=message,
+                #     model=self.model_name.replace("-FC", ""),
+                #     temperature=self.temperature,
+                #     max_tokens=self.max_tokens,
+                #     top_p=self.top_p,
+                # )
             latency = time.time() - start_time
             # import ipdb; ipdb.set_trace()
             try:
-                func_call = response.choices[0].message.function_call
                 result = [
-                    {func_call.function.name: func_call.function.arguments}
-                    for func_call in response.choices[0].message.tool_calls
+                    {_tool_call['tool_name']: _tool_call['tool_arguments']}
+                    for _tool_call in tool_calls
                 ]
             except Exception as e:
                 print("Error while trying to extract function calls from response:", e)
                 if API_FAILURE_MESSAGE:
                     result = API_FAILURE_MESSAGE
                 else:
-                    result = response.choices[0].message.content
+                    result = f"We failed don't know why with {message} and {oai_tool}"
         metadata = {}
         if API_FAILURE_MESSAGE:
             # do something
             metadata["input_tokens"] = -1
             metadata["output_tokens"] = -1
         else:
-            metadata["input_tokens"] = response.usage.prompt_tokens
-            metadata["output_tokens"] = response.usage.completion_tokens
+            # todo fix
+            metadata["input_tokens"] = -1
+            metadata["output_tokens"] = -1
         metadata["latency"] = latency
         return result, metadata
 
