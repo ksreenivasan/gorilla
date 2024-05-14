@@ -30,7 +30,6 @@ class OutlinesVllmHandler(BaseHandler):
         seed=42,
         gen_mode="conditional",
         n_tool_calls=1,
-        n_tool_calls_mode="solution",
         ) -> None:
 
         self.model_style = ModelStyle.Outlines
