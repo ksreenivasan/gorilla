@@ -34,8 +34,8 @@ class OutlinesVllmHandler(BaseHandler):
         ) -> None:
 
         self.model_style = ModelStyle.Outlines
-        self.n_tool_calls = n_tool_calls
-        self.n_tool_calls_mode = n_tool_calls_mode
+        self._n_tool_calls = n_tool_calls
+        self.n_tool_calls = None
         self.gen_mode = gen_mode
         super().__init__(model_name, temperature, top_p, max_tokens)
 
@@ -73,9 +73,11 @@ class OutlinesVllmHandler(BaseHandler):
     def inference(self, user_query, tools, test_category):
 
         # get n_tool_calls
-        if self.n_tool_calls_mode == "solution":
+        if self._n_tool_calls == "solution":
             self.solution = self.load_solution(user_query, test_category)
             self.n_tool_calls = len(self.solution)
+        else:
+            self.n_tool_calls = self._n_tool_calls
 
         # Get schema for tool use
         try:
@@ -135,22 +137,11 @@ class OutlinesVllmHandler(BaseHandler):
         return execution_list
 
     def write(self, result, write_path):
-        # if file_to_open[:-12] != "_result.json":
-        #     file_to_open = file_to_open.replace(".json", "_result.json")
-
-        # Make path if it does not exist
         os.makedirs(os.path.dirname(write_path), exist_ok=True)
 
         # Write path
         with open(write_path, "a+") as f:
             f.write(json.dumps(result) + "\n")
-
-        # if not os.path.exists("./result"):
-        #     os.mkdir("./result")
-        # if not os.path.exists("./result/" + self.model_name.replace("/", "_")):
-        #     os.mkdir("./result/" + self.model_name.replace("/", "_"))
-        # with open("./result/" + self.model_name.replace("/", "_") + "/" + file_to_open, "a+") as f:
-        #     f.write(json.dumps(result) + "\n")
 
     def load_result(self, test_category):
         # This method is used to load the result from the file.
