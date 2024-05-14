@@ -293,7 +293,7 @@ def runner(model_names, test_categories, api_sanity_check, output_dir):
         os.path.join(output_dir, item) for item in os.listdir(output_dir)
         if os.path.isdir(os.path.join(output_dir, item))
         ]
-
+    subdirs = sorted(subdirs)
 
     # Traverse each subdirectory
     for subdir in subdirs:
