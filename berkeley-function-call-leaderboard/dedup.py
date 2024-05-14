@@ -115,12 +115,10 @@ def get_args():
     return args
 
 def main():
-    print("hi")
 
     # Load args
     args = get_args()
     model_dirs = get_directories(args.out_dir)
-    print(model_dirs)
 
     # Loop over all model dirs
     for model_dir in model_dirs:
