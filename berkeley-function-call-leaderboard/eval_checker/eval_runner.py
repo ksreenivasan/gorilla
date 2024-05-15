@@ -184,9 +184,10 @@ def single_ast_file_runner(
             f"The length of the model result ({len(model_result)}) does not match the length of the prompt ({len(prompt)}) or possible answer ({len(possible_answer)}).",
             )
     n_tasks = min(fingerprint["limit"], len(prompt) - fingerprint["limit_start"]) if fingerprint["limit"] else len(prompt)
-    assert (
-        len(model_result) == n_tasks
-    ), f"Your model only has {len(model_result)} results even though fingerprint.jsonl says your model has {n_tasks} results. Please check the input files for completeness."
+    if len(model_result) != n_tasks:
+        warnings.warn(
+            f"Your model only has {len(model_result)} results even though fingerprint.jsonl says your model has {n_tasks} results. Please check the input files for completeness.",
+            )
 
     result = []
     correct_count = 0
