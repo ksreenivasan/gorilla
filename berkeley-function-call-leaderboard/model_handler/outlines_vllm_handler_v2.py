@@ -10,10 +10,7 @@ from model_handler.constant import GORILLA_TO_OPENAPI
 from model_handler.handler import BaseHandler
 from model_handler.model_style import ModelStyle
 from model_handler.utils import _cast_to_openai_type, ast_parse
-from openai import OpenAI
-from pydantic import BaseModel
-from tool_use.prompt import get_system_prompt
-from tool_use.schema import tools_to_schema
+from tool_use.prompt import get_meta_tool_system_prompt, get_system_prompt
 from tool_use.tool import Tool
 
 from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_signature
@@ -78,16 +75,18 @@ class OutlinesVllmHandler(BaseHandler):
         else:
             self.n_tool_calls = self._n_tool_calls
 
-        # Get schema for tool use
+        # Get schema for tool use while getting the system prompt
         try:
-            tool_schema = tools_to_schema(tools)
+            if self.gen_mode == "meta_tool":
+                system_prompt = get_meta_tool_system_prompt(tools)
+            else:
+                system_prompt = get_system_prompt(tools)
         except Exception as e:
             result = f'[error.message(error="{str(e)}")]'
             print(f"An error occurred: {str(e)}")
             return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0, "n_tool_calls": self.n_tool_calls, "tool_calls": [], "messages": ""}
 
         # Prompt
-        system_prompt = get_system_prompt(tool_schema)
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_query},
@@ -105,7 +104,14 @@ class OutlinesVllmHandler(BaseHandler):
 
         # Record info
         latency = time.time() - start
-        metadata = {"input_tokens": 0, "output_tokens": 0, "latency": latency,  "n_tool_calls": self.n_tool_calls, "tool_calls": tool_calls, "messages": output_messages}
+        metadata = {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "latency": latency,
+            "n_tool_calls": self.n_tool_calls,
+            "tool_calls": tool_calls,
+            "messages": output_messages,
+            }
         return result, metadata
 
     def decode_ast(self, result, language="Python"):
