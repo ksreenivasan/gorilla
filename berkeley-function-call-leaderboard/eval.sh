@@ -3,8 +3,8 @@
 MODEL=$1
 upload_dir=$2
 
-gen_modes=("conditional" "structured" "unstructured")
-n_tool_calls=("solution" "auto")
+gen_modes=("conditional" "structured" "unstructured", "meta_tool")
+n_tool_calls=("solution" "auto", "(0, 1)")
 
 for gen_mode in "${gen_modes[@]}"
 do
