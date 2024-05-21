@@ -1,7 +1,7 @@
 requests
 tqdm
-tree_sitter
-torch 
+tree-sitter==0.21.0
+torch
 ray
 shortuuid
 mistralai
