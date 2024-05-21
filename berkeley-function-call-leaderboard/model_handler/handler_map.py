@@ -22,6 +22,8 @@ from model_handler.outlines_vllm_handler_v2 import OutlinesVllmHandler
 handler_map = {
     "gorilla-openfunctions-v0": GorillaHandler,
     "gorilla-openfunctions-v2": GorillaHandler,
+    "gpt-4o-2024-05-13": OpenAIHandler,
+    "gpt-4o-2024-05-13-FC": OpenAIHandler,
     "gpt-4-turbo-2024-04-09-FC": OpenAIHandler,
     "gpt-4-turbo-2024-04-09": OpenAIHandler,
     "gpt-4-1106-preview-FC": OpenAIHandler,
@@ -52,6 +54,8 @@ handler_map = {
     "Nexusflow-Raven-v2": NexusHandler,
     "gemini-1.0-pro": GeminiHandler,
     "gemini-1.5-pro-preview-0409": GeminiHandler,
+    "gemini-1.5-pro-preview-0514": GeminiHandler,
+    "gemini-1.5-flash-preview-0514": GeminiHandler,
     "gemma": OSSHandler,
     # "google/gemma-7b-it": GemmaHandler,
     "google/gemma-7b-it": OutlinesHandler,
