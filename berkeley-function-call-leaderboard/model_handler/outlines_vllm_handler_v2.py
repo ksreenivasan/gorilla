@@ -10,10 +10,9 @@ from model_handler.constant import GORILLA_TO_OPENAPI
 from model_handler.handler import BaseHandler
 from model_handler.model_style import ModelStyle
 from model_handler.utils import _cast_to_openai_type, ast_parse
+from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_signature
 from tool_use.prompt import get_meta_tool_system_prompt, get_system_prompt
 from tool_use.tool import Tool
-
-from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_signature
 
 
 class OutlinesVllmHandler(BaseHandler):
@@ -98,8 +97,8 @@ class OutlinesVllmHandler(BaseHandler):
             output_messages, tool_calls = self.tool(messages, gen_mode=self.gen_mode, tools=tools, n_tool_calls=self.n_tool_calls)
             result = bfcl_format(tool_calls)
         except Exception as e:
-            result = f'[error.message(error="{str(e)}")]'
-            print(f"An error occurred: {str(e)}")
+            result = f'[error.message(error="{e}")]'
+            print(f"An error occurred: {e}")
             return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0,  "n_tool_calls": self.n_tool_calls, "tool_calls": [], "messages": ""}
 
         # Record info
