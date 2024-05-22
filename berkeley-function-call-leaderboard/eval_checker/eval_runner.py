@@ -22,7 +22,13 @@ def single_executable_file_runner(
     for i in tqdm(range(len(model_result)), desc="Running tests"):
         raw_result = model_result[i]["result"]
         try:
-            decoded_result = handler.decode_execute(raw_result)
+            new_result = []
+            for call in raw_result:
+                new_call = {}
+                for k,v in call.items():
+                    new_call[k] = json.dumps(v)
+                new_result.append(new_call)
+            decoded_result = handler.decode_execute(new_result)
         except Exception as e:
             result.append(
                 {
@@ -33,7 +39,7 @@ def single_executable_file_runner(
                     "error": [f"Failed to decode executable. {str(e)}"],
                     "error_type": "executable_decoder:decoder_failed",
                     "prompt": prompt[i],
-                    "model_result_raw": raw_result,
+                    "model_result_raw": new_result,
                 }
             )
             continue
@@ -123,7 +129,13 @@ def single_relevance_file_runner(handler, model_result, model_name, test_categor
         decoded_result = None
 
         try:
-            decoded_result = handler.decode_ast(model_result_item, language="Python")
+            new_result = []
+            for call in model_result_item:
+                new_call = {}
+                for k,v in call.items():
+                    new_call[k] = json.dumps(v)
+                new_result.append(new_call)
+            decoded_result = handler.decode_ast(new_result, language="Python")
             success = False
             if is_empty_output(decoded_result):
                 success = True
@@ -143,7 +155,7 @@ def single_relevance_file_runner(handler, model_result, model_name, test_categor
                 f"Valid syntax. Successfully decode AST when it should not."
             ]
             temp["error_type"] = "relevance_error:decoder_success"
-            temp["model_result"] = model_result_item
+            temp["model_result"] = new_result
             temp["decoded_result"] = decoded_result
 
             result.append(temp)
@@ -180,7 +192,14 @@ def single_ast_file_runner(
 
         try:
             model_result_item_raw = model_result_item
-            model_result_item = handler.decode_ast(model_result_item, language)
+            new_result = []
+            for call in model_result_item:
+                new_call = {}
+                for k,v in call.items():
+                    new_call[k] = json.dumps(v)
+                new_result.append(new_call)
+
+            model_result_item = handler.decode_ast(new_result, language)
         except Exception as e:
             result.append(
                 {
@@ -191,7 +210,7 @@ def single_ast_file_runner(
                     "error": [f"Invalid syntax. Failed to decode AST. {str(e)}"],
                     "error_type": "ast_decoder:decoder_failed",
                     "prompt": prompt[i],
-                    "model_result_raw": model_result_item_raw,
+                    "model_result_raw": new_result,
                     "possible_answer": possible_answer_item,
                 }
             )
