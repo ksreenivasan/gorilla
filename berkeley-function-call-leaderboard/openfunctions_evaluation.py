@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import re
+from collections.abc import Sequence
 
 from model_handler.constant import USE_COHERE_OPTIMIZATION
 from model_handler.handler_map import handler_map
@@ -30,7 +31,7 @@ def get_args():
     # Refer to model_choice for supported models.
     parser.add_argument("--model", type=str, default="gorilla-openfunctions-v2")
     # Refer to test_categories for supported categories.
-    parser.add_argument("--test-category", type=str, default="all")
+    parser.add_argument("--test-category", type=str, default="all", help="Evaluate multiple categories by inputting a list of categories separated by commas (no spaces).")
 
     # Parameters for the model that you want to test.
     parser.add_argument("--temperature", type=float, default=0.7)
@@ -92,7 +93,14 @@ def build_handler(model_name, temperature, top_p, max_tokens, gen_mode, n_tool_c
 
 
 def load_file(test_category):
-    if test_category == "all":
+
+    if "," in test_category:
+        result = [load_file(test_cat) for test_cat in test_category.split(",")]
+        test_cate, files_to_open = [], []
+        for r in result:
+            test_cate += r[0]
+            files_to_open += r[1]
+    elif test_category == "all":
         test_cate, files_to_open = list(test_categories.keys()), list(
             test_categories.values()
         )
