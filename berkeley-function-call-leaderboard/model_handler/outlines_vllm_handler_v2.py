@@ -2,6 +2,7 @@ import json
 import os
 import re
 import time
+import warnings
 from functools import reduce
 from typing import Union
 
@@ -10,9 +11,10 @@ from model_handler.constant import GORILLA_TO_OPENAPI
 from model_handler.handler import BaseHandler
 from model_handler.model_style import ModelStyle
 from model_handler.utils import _cast_to_openai_type, ast_parse
-from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_signature
 from tool_use.prompt import get_meta_tool_system_prompt, get_system_prompt
 from tool_use.tool import Tool
+
+from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_signature
 
 
 class OutlinesVllmHandler(BaseHandler):
@@ -68,7 +70,9 @@ class OutlinesVllmHandler(BaseHandler):
     def inference(self, user_query, tools, test_category):
 
         # get n_tool_calls
-        if self._n_tool_calls == "solution":
+        if self._n_tool_calls == "solution" and test_category == "relevance":
+            raise ValueError("Solutions is not valid for relevance category.")
+        elif self._n_tool_calls == "solution":
             self.solution = self.load_solution(user_query, test_category)
             self.n_tool_calls = len(self.solution)
         else:
