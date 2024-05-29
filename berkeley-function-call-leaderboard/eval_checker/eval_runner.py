@@ -505,8 +505,8 @@ LEADERBOARD_TABLE = {}
 def load_test_categories(_test_categories):
     if _test_categories is None:
         return None
-    if "," in _test_categories:
-        _test_categories = _test_categories.split(",")
+    if "," in _test_categories[0]:
+        _test_categories = _test_categories[0].split(",")
     test_categories = []
     for test_category in _test_categories:
         test_categories += ARG_PARSE_MAPPING.get(test_category, [test_category])
@@ -544,5 +544,5 @@ if __name__ == "__main__":
     args = get_args()
     model_names = args.model
     api_sanity_check = args.skip_api_sanity_check
-    test_categories = load_test_categories(args.test_categories)
+    test_categories = load_test_categories(args.test_category)
     runner(model_names, test_categories, api_sanity_check, args.output_dir)
