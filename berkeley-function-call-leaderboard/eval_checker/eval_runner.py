@@ -502,7 +502,18 @@ POSSIBLE_ANSWER_PATH = "../data/possible_answer/"
 LEADERBOARD_TABLE = {}
 
 
-if __name__ == "__main__":
+def load_test_categories(_test_categories):
+    if _test_categories is None:
+        return None
+    if "," in _test_categories:
+        _test_categories = _test_categories.split(",")
+    test_categories = []
+    for test_category in _test_categories:
+        test_categories += ARG_PARSE_MAPPING.get(test_category, [test_category])
+    return test_categories
+
+
+def get_args():
     parser = argparse.ArgumentParser(description="Process two lists of strings.")
 
     # Add arguments for two lists of strings
@@ -525,16 +536,13 @@ if __name__ == "__main__":
     parser.add_argument("--output-dir", type=str, default="../outputs", help="Path for saving the outputs")
 
     args = parser.parse_args()
+    return args
 
+
+if __name__ == "__main__":
+
+    args = get_args()
     model_names = args.model
     api_sanity_check = args.skip_api_sanity_check
-    test_categories = None
-    if args.test_category is not None:
-        test_categories = []
-        for test_category in args.test_category:
-            if test_category in ARG_PARSE_MAPPING:
-                test_categories.extend(ARG_PARSE_MAPPING[test_category])
-            else:
-                test_categories.append(test_category)
-
+    test_categories = load_test_categories(args.test_categories)
     runner(model_names, test_categories, api_sanity_check, args.output_dir)
