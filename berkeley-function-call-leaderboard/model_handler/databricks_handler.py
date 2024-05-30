@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import time
@@ -64,6 +65,7 @@ def get_system_prompt(
         tool_schema=tool_schema,
         )
 
+
 class DatabricksHandler(BaseHandler):
     def __init__(self, model_name, temperature=0.7, top_p=1, max_tokens=1000) -> None:
         self.model_name = model_name
@@ -92,12 +94,29 @@ class DatabricksHandler(BaseHandler):
         #         ),
         #     },
         # ]
-        messages = [
-            {"role": "system", "content": get_system_prompt(str(functions))},
-            {"role": "user", "content": prompt},
-        ]
 
-        # function_input = {"type": "function", "function": functions[0]}
+
+        # messages = [
+        #     {"role": "system", "content": get_system_prompt(str(functions))},
+        #     {"role": "user", "content": prompt},
+        # ]
+
+        # # function_input = {"type": "function", "function": functions[0]}
+        # start_time = time.time()
+        # response = self.client.chat.completions.create(
+        #     messages=messages,
+        #     model=self.model_name,
+        #     temperature=self.temperature,
+        #     max_tokens=self.max_tokens,
+        #     top_p=self.top_p,
+        # )
+
+
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT_FOR_CHAT_MODEL},
+            {"role": "user", "content": USER_PROMPT_FOR_CHAT_MODEL.format(user_prompt=prompt, functions=str(functions))},
+        ]
+        # prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>{SYSTEM_PROMPT_FOR_CHAT_MODEL}<|eot_id|><|start_header_id|>user<|end_header_id|>{USER_PROMPT_FOR_CHAT_MODEL.format(user_prompt=prompt, functions=str(functions))}<|eot_id|><|start_header_id|>assistant<|end_header_id|>"""
         start_time = time.time()
         response = self.client.chat.completions.create(
             messages=messages,
@@ -106,6 +125,7 @@ class DatabricksHandler(BaseHandler):
             max_tokens=self.max_tokens,
             top_p=self.top_p,
         )
+
         latency = time.time() - start_time
         result = response.choices[0].message.content
         metadata = {}
@@ -115,19 +135,29 @@ class DatabricksHandler(BaseHandler):
         return result, metadata
 
     def decode_ast(self, result, language="Python"):
-        func = re.sub(r"'([^']*)'", r"\1", result)
-        func = func.replace("\n    ", "")
+        func = result
+        func = func.replace("\n", "")  # remove new line characters
         if not func.startswith("["):
             func = "[" + func
         if not func.endswith("]"):
             func = func + "]"
-        if func.startswith("['"):
-            func = func.replace("['", "[")
-        try:
-            decode_output = ast_parse(func, language)
-        except:
-            decode_output = ast_parse(result, language)
-        return decode_output
+        decoded_output = ast_parse(func, language)
+        return decoded_output
+
+    # def decode_ast(self, result, language="Python"):
+    #     func = re.sub(r"'([^']*)'", r"\1", result)
+    #     func = func.replace("\n    ", "")
+    #     if not func.startswith("["):
+    #         func = "[" + func
+    #     if not func.endswith("]"):
+    #         func = func + "]"
+    #     if func.startswith("['"):
+    #         func = func.replace("['", "[")
+    #     try:
+    #         decode_output = ast_parse(func, language)
+    #     except:
+    #         decode_output = ast_parse(result, language)
+    #     return decode_output
 
     def decode_execute(self, result, language="Python"):
         func = re.sub(r"'([^']*)'", r"\1", result)
@@ -149,3 +179,10 @@ class DatabricksHandler(BaseHandler):
                     f"{key}({','.join([f'{k}={repr(v)}' for k, v in value.items()])})"
                 )
         return execution_list
+
+    def write(self, result, write_path):
+        os.makedirs(os.path.dirname(write_path), exist_ok=True)
+
+        # Write path
+        with open(write_path, "a+") as f:
+            f.write(json.dumps(result) + "\n")
