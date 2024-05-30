@@ -44,6 +44,12 @@ COLUMNS = [
 
 # Note that we don't need to substitute `_` with `/` in the model name here.
 MODEL_METADATA_MAPPING = {
+    "agent-flan-llama3-8b-lr2e-7-2ep": [
+        "agent-flan-llama3-8b-lr2e-7-2ep",
+        "Sam",
+        "Sam",
+        "Finetune",
+    ],
     "gpt-4o-2024-05-13-FC": [
         "GPT-4o-2024-05-13 (FC)",
         "https://openai.com/index/hello-gpt-4o/",
