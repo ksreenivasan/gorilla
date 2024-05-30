@@ -66,6 +66,7 @@ handler_map = {
     "meetkai/functionary-small-v2.4-FC": FunctionaryHandler,
     "meetkai/functionary-medium-v2.4-FC": FunctionaryHandler,
     "databricks/dbrx-instruct": OutlinesVllmHandler,
+    "agent-flan-llama3-8b-lr2e-7-2ep": DatabricksHandler,
     # "databricks-dbrx-instruct": DatabricksHandler,
     "databricks-dbrx-instruct": OutlinesVllmHandler,
     "NousResearch/Hermes-2-Pro-Mistral-7B": HermesHandler,
