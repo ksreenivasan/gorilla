@@ -11,6 +11,8 @@ from model_handler.constant import (
     SYSTEM_PROMPT_FOR_CHAT_MODEL,
     USER_PROMPT_FOR_CHAT_MODEL,
     GORILLA_TO_OPENAPI,
+    USER_PROMPT_FOR_CHAT_MODEL_FC,
+    SYSTEM_PROMPT_FOR_CHAT_MODEL_FC
 )
 import time
 from openai import OpenAI
@@ -62,11 +64,12 @@ class DatabricksHandler(BaseHandler):
             result = response.choices[0].message.content
         else:
             # TODO: see if this is necessary. they do it for openai models
-            prompt = augment_prompt_by_languge(prompt, test_category)
+            # prompt = augment_prompt_by_languge(prompt, test_category)
             functions = language_specific_pre_processing(functions, test_category, True)
             if type(functions) is not list:
                 functions = [functions]
-            message = [{"role": "user", "content": "Questions:" + prompt}]
+            message = [{"role": "system", "content": SYSTEM_PROMPT_FOR_CHAT_MODEL_FC.format(functions=str(functions))},
+                       {"role": "user", "content": prompt}]
 
             # NOTE: since we're using the deprecated function_call api, we don't
             # need to convert it to "tools". But this method also modifies the functions
@@ -110,13 +113,7 @@ class DatabricksHandler(BaseHandler):
             latency = time.time() - start_time
             # import ipdb; ipdb.set_trace()
             try:
-                # TODO: changed this to refer to function_call
-                # but will need to change this back to tool_calls/function_calls
-                # when the FC impl changes.
                 func_call = response.choices[0].message.function_call
-                # result = [
-                #     {func_call.name: func_call.arguments}
-                # ]
                 result = [
                     {func_call.function.name: func_call.function.arguments}
                     for func_call in response.choices[0].message.tool_calls
