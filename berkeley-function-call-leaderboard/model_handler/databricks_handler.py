@@ -12,6 +12,7 @@ from model_handler.handler import BaseHandler
 from model_handler.model_style import ModelStyle
 from model_handler.utils import ast_parse, language_specific_pre_processing
 from openai import OpenAI
+from tool_use import post_process
 
 
 def get_system_prompt(
@@ -96,12 +97,11 @@ class DatabricksHandler(BaseHandler):
         # ]
 
 
+
         # messages = [
         #     {"role": "system", "content": get_system_prompt(str(functions))},
         #     {"role": "user", "content": prompt},
         # ]
-
-        # # function_input = {"type": "function", "function": functions[0]}
         # start_time = time.time()
         # response = self.client.chat.completions.create(
         #     messages=messages,
@@ -110,6 +110,12 @@ class DatabricksHandler(BaseHandler):
         #     max_tokens=self.max_tokens,
         #     top_p=self.top_p,
         # )
+        # latency = time.time() - start_time
+        # result_raw = response.choices[0].message.content
+        # out_message = [{"role": "assistant", "content": result_raw}]
+        # print(out_message)
+        # result = post_process.unstructured(out_message)
+        # result = post_process.bfcl_format(result)
 
 
         messages = [
@@ -128,6 +134,7 @@ class DatabricksHandler(BaseHandler):
 
         latency = time.time() - start_time
         result = response.choices[0].message.content
+
         metadata = {}
         metadata["input_tokens"] = response.usage.prompt_tokens
         metadata["output_tokens"] = response.usage.completion_tokens
