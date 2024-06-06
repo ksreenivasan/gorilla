@@ -1,9 +1,41 @@
-import re, ast, builtins, ast, json
-from model_handler.model_style import ModelStyle
-from model_handler.constant import JAVA_TYPE_CONVERSION, JS_TYPE_CONVERSION
+import ast
+import builtins
+import json
+import re
+
+from model_handler.constant import (
+    GORILLA_TO_OPENAPI,
+    JAVA_TYPE_CONVERSION,
+    JS_TYPE_CONVERSION,
+    USE_COHERE_OPTIMIZATION,
+)
 from model_handler.java_parser import parse_java_function_call
 from model_handler.js_parser import parse_javascript_function_call
-from model_handler.constant import GORILLA_TO_OPENAPI, USE_COHERE_OPTIMIZATION
+from model_handler.model_style import ModelStyle
+
+
+def text_to_tool_calls(text):
+    """Return all tool calls that match the tool_regex pattern as a list of dicts.
+    This works independent of `tool_call_start` and `tool_call_end`.
+    This works for multiple tool calls.
+    Return an empty list of there are no tool calls.
+    """
+
+    tool_regex = "<tool_call>(.*?)</tool_call>"
+    matches = re.findall(tool_regex, text, re.DOTALL)
+    tool_call_text = matches[0].strip("\n")
+    tool_calls = json.loads(tool_call_text)
+    return tool_calls
+
+def bfcl_format(tool_calls):
+    tool_strs = []
+    for tool_call in tool_calls:
+        tool_name_str, tool_params = list(tool_call.items())[0]
+        tool_param_str = ', '.join([f"{key}='{value}'" if isinstance(value, str) else f"{key}={value}" for key, value in tool_params.items()])
+        tool_str = f'{tool_name_str}({tool_param_str})'
+        tool_strs.append(tool_str)
+    result = '[' + ', '.join(tool_strs) + ']'
+    return result
 
 
 def _cast_to_openai_type(properties, mapping, test_category):

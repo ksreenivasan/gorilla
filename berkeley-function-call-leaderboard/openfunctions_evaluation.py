@@ -1,8 +1,10 @@
 import argparse
 import json
+import multiprocessing
 import os
 import re
 from collections.abc import Sequence
+from concurrent.futures import ThreadPoolExecutor
 
 from model_handler.constant import USE_COHERE_OPTIMIZATION
 from model_handler.handler_map import handler_map
@@ -46,6 +48,8 @@ def get_args():
     parser.add_argument("--output-dir", type=str, default="./outputs", help="Path for saving the output generations")
     parser.add_argument("--num-gpus", default=1, type=int)
     parser.add_argument("--timeout", default=60, type=int)
+    parser.add_argument("--num-workers", default=None, type=int)
+    parser.add_argument("--format", type=str, default="python")
 
     args = parser.parse_args()
     return args
@@ -78,7 +82,7 @@ def extract_tuple(text):
         return False
 
 
-def build_handler(model_name, temperature, top_p, max_tokens, gen_mode, n_tool_calls):
+def build_handler(model_name, temperature, top_p, max_tokens, gen_mode, n_tool_calls, format):
     handler = handler_map[model_name](model_name, temperature, top_p, max_tokens)
     if "gen_mode" in vars(handler):
         handler.gen_mode = gen_mode
@@ -89,6 +93,8 @@ def build_handler(model_name, temperature, top_p, max_tokens, gen_mode, n_tool_c
             handler._n_tool_calls = int(n_tool_calls)
         elif extract_tuple(n_tool_calls):
             handler._n_tool_calls = extract_tuple(n_tool_calls)
+    if "format" in vars(handler):
+        handler.format = format
     return handler
 
 
@@ -144,15 +150,49 @@ def get_model_dir(args):
     return model_dir
 
 
+def pipeline(params):
+    index = params['idx']
+    test_case = params['test_case']
+    handler = params["handler"]
+    num_existing_result = params["num_existing_result"]
+    user_question, functions = test_case["question"], test_case["function"]
+    test_category = params["test_category"]
+
+    if index < num_existing_result:
+        return None
+
+    if type(functions) is dict or type(functions) is str:
+        functions = [functions]
+    result, metadata = handler.inference(user_question, functions, test_category)
+    result_to_write = {
+        "idx": index,
+        "result": result,
+        "input_token_count": metadata["input_tokens"],
+        "output_token_count": metadata["output_tokens"],
+        "latency": metadata["latency"],
+    }
+    if "messages" in metadata:
+        result_to_write["messages"] = metadata["messages"]
+    if "tool_calls" in metadata:
+        result_to_write["tool_calls"] = metadata["tool_calls"]
+    if "n_tool_calls" in metadata:
+        result_to_write["n_tool_calls"] = metadata["n_tool_calls"]
+    if "raw_text" in metadata:
+        result_to_write["raw_text"] = metadata["raw_text"]
+
+    return result_to_write
+
+
 if __name__ == "__main__":
     args = get_args()
     model_dir = get_model_dir(args)
     generations_dir = os.path.join(model_dir, "generations")
     fingerprint(args, model_dir)
+    num_workers = multiprocessing.cpu_count() if args.num_workers is None else args.num_workers
 
     if USE_COHERE_OPTIMIZATION and "command-r-plus" in args.model:
         args.model = args.model + "-optimized"
-    handler = build_handler(args.model, args.temperature, args.top_p, args.max_tokens, args.gen_mode, args.n_tool_calls)
+    handler = build_handler(args.model, args.temperature, args.top_p, args.max_tokens, args.gen_mode, args.n_tool_calls, args.format)
 
     if handler.model_style == ModelStyle.OSSMODEL:
         result = handler.inference(
@@ -174,27 +214,39 @@ if __name__ == "__main__":
             num_existing_result = get_num_existing_result(generations_path, args.reset)
 
             n_tasks = min(args.limit, len(test_cases) - args.limit_start) if args.limit else len(test_cases)
-            for index in tqdm(range(args.limit_start, args.limit_start + n_tasks)):
-                test_case = test_cases[index]
+            params = [
+                {'test_case': test_cases[idx], 'idx': idx, "handler": handler, "num_existing_result": num_existing_result, "test_category": test_category}
+                for idx in range(args.limit_start, args.limit_start + n_tasks)
+                ]
+
+            with ThreadPoolExecutor(max_workers=num_workers) as executor:
+                for result_to_write in tqdm(executor.map(pipeline, params), total=len(params)):
+                    if result_to_write is not None:
+                        handler.write(result_to_write, generations_path)
+
+
+
+            # for index in tqdm(range(args.limit_start, args.limit_start + n_tasks)):
+            #     test_case = test_cases[index]
 
             # for index, test_case in enumerate(tqdm(test_cases)):
-                if index < num_existing_result:
-                    continue
-                user_question, functions = test_case["question"], test_case["function"]
-                if type(functions) is dict or type(functions) is str:
-                    functions = [functions]
-                result, metadata = handler.inference(user_question, functions, test_category)
-                result_to_write = {
-                    "idx": index,
-                    "result": result,
-                    "input_token_count": metadata["input_tokens"],
-                    "output_token_count": metadata["output_tokens"],
-                    "latency": metadata["latency"],
-                }
-                if "messages" in metadata:
-                    result_to_write["messages"] = metadata["messages"]
-                if "tool_calls" in metadata:
-                    result_to_write["tool_calls"] = metadata["tool_calls"]
-                if "n_tool_calls" in metadata:
-                    result_to_write["n_tool_calls"] = metadata["n_tool_calls"]
-                handler.write(result_to_write, generations_path)
+                # if index < num_existing_result:
+                #     continue
+                # user_question, functions = test_case["question"], test_case["function"]
+                # if type(functions) is dict or type(functions) is str:
+                #     functions = [functions]
+                # result, metadata = handler.inference(user_question, functions, test_category)
+                # result_to_write = {
+                #     "idx": index,
+                #     "result": result,
+                #     "input_token_count": metadata["input_tokens"],
+                #     "output_token_count": metadata["output_tokens"],
+                #     "latency": metadata["latency"],
+                # }
+                # if "messages" in metadata:
+                #     result_to_write["messages"] = metadata["messages"]
+                # if "tool_calls" in metadata:
+                #     result_to_write["tool_calls"] = metadata["tool_calls"]
+                # if "n_tool_calls" in metadata:
+                #     result_to_write["n_tool_calls"] = metadata["n_tool_calls"]
+                # handler.write(result_to_write, generations_path)

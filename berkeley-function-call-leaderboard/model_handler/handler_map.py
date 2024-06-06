@@ -8,6 +8,9 @@ from model_handler.firework_ai_handler import FireworkAIHandler
 from model_handler.functionary_handler import FunctionaryHandler
 from model_handler.gemini_handler import GeminiHandler
 from model_handler.gemma_handler import GemmaHandler
+from model_handler.generic_oai_compatible_model_handler import (
+    GenericOAICompatibleModelHandler,
+)
 from model_handler.glaive_handler import GlaiveHandler
 from model_handler.gorilla_handler import GorillaHandler
 from model_handler.gpt_handler import OpenAIHandler
@@ -57,6 +60,7 @@ handler_map = {
     "gemini-1.5-pro-preview-0514": GeminiHandler,
     "gemini-1.5-flash-preview-0514": GeminiHandler,
     "gemma": OSSHandler,
+    "generic-oai-compatible-model": GenericOAICompatibleModelHandler,
     # "google/gemma-7b-it": GemmaHandler,
     "google/gemma-7b-it": OutlinesHandler,
     "glaiveai/glaive-function-calling-v1": GlaiveHandler,
