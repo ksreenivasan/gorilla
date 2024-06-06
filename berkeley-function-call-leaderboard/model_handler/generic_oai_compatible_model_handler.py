@@ -85,7 +85,6 @@ class GenericOAICompatibleModelHandler(BaseHandler):
             )
             latency = time.time() - start_time
             raw_text = response.choices[0].message.content
-            print(raw_text)
             if "<tool_call>" in raw_text and "</tool_call>" in raw_text:
                 tool_calls = text_to_tool_calls(raw_text)
                 result = bfcl_format(tool_calls)
