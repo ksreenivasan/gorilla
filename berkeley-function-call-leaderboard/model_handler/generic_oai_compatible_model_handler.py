@@ -85,11 +85,15 @@ class GenericOAICompatibleModelHandler(BaseHandler):
             )
             latency = time.time() - start_time
             raw_text = response.choices[0].message.content
-            if "<tool_call>" in raw_text and "</tool_call>" in raw_text:
-                tool_calls = text_to_tool_calls(raw_text)
-                result = bfcl_format(tool_calls)
-            else:
-                result = raw_text
+            try:
+                if "<tool_call>" in raw_text and "</tool_call>" in raw_text:
+                    tool_calls = text_to_tool_calls(raw_text)
+                    result = bfcl_format(tool_calls)
+                else:
+                    result = raw_text
+            except Exception as e:
+                print(f"ERROR:\n{e}")
+                return raw_text, {"input_tokens": 0, "output_tokens": 0, "raw_text": "", "latency": 0, "raw_text": raw_text}
         else:
             prompt = augment_prompt_by_languge(prompt, test_category)
             functions = language_specific_pre_processing(functions, test_category, True)
