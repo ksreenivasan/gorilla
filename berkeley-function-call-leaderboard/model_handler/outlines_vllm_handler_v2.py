@@ -11,10 +11,9 @@ from model_handler.constant import GORILLA_TO_OPENAPI
 from model_handler.handler import BaseHandler
 from model_handler.model_style import ModelStyle
 from model_handler.utils import _cast_to_openai_type, ast_parse
+from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_signature
 from tool_use.prompt import get_meta_tool_system_prompt, get_system_prompt
 from tool_use.tool import Tool
-
-from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_signature
 
 
 class OutlinesVllmHandler(BaseHandler):
@@ -22,9 +21,9 @@ class OutlinesVllmHandler(BaseHandler):
     def __init__(
         self,
         model_name,
-        temperature=0.7,
+        temperature=0,
         top_p=1,
-        max_tokens=150,
+        max_tokens=4096,
         seed=42,
         gen_mode="conditional",
         n_tool_calls=1,
@@ -39,7 +38,8 @@ class OutlinesVllmHandler(BaseHandler):
         # Initialize tool
         self.base_url = "http://localhost:8000/v1"
         self.api_key = "-"
-        self.tool = Tool(self.base_url, self.api_key, self.model_name)
+        self.gen_kwargs = dict(temperature=temperature, top_p=top_p, max_tokens=max_tokens)
+        self.tool = Tool(self.base_url, self.api_key, self.model_name, gen_kwargs=self.gen_kwargs)
 
     def load_solution(self, user_query, test_category):
         test_category = test_category.replace("executable_", "")
