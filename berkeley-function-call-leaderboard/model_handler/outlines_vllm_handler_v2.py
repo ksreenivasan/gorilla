@@ -7,13 +7,14 @@ from functools import reduce
 from typing import Union
 
 import torch
-from model_handler.constant import GORILLA_TO_OPENAPI
+from model_handler.constant import SYSTEM_PROMPT_JSON, SYSTEM_PROMPT_PYTHON
 from model_handler.handler import BaseHandler
 from model_handler.model_style import ModelStyle
 from model_handler.utils import _cast_to_openai_type, ast_parse
 from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_signature
 from tool_use.prompt import get_meta_tool_system_prompt, get_system_prompt
 from tool_use.tool import Tool
+from tool_use.utils.regex_util import tools_to_schema
 
 
 class OutlinesVllmHandler(BaseHandler):
@@ -27,18 +28,21 @@ class OutlinesVllmHandler(BaseHandler):
         seed=42,
         gen_mode="conditional",
         n_tool_calls=1,
+        format="json",
         ) -> None:
 
         self.model_style = ModelStyle.Outlines
         self._n_tool_calls = n_tool_calls
         self.n_tool_calls = None
         self.gen_mode = gen_mode
+        self.format = format
+
+        self.gen_kwargs = dict(temperature=temperature, top_p=top_p, max_tokens=max_tokens)
         super().__init__(model_name, temperature, top_p, max_tokens)
 
         # Initialize tool
         self.base_url = "http://localhost:8000/v1"
         self.api_key = "-"
-        self.gen_kwargs = dict(temperature=temperature, top_p=top_p, max_tokens=max_tokens)
         self.tool = Tool(self.base_url, self.api_key, self.model_name, gen_kwargs=self.gen_kwargs)
 
     def load_solution(self, user_query, test_category):
@@ -83,10 +87,11 @@ class OutlinesVllmHandler(BaseHandler):
             if self.gen_mode == "meta_tool":
                 system_prompt = get_meta_tool_system_prompt(tools)
             else:
-                system_prompt = get_system_prompt(tools)
+                tools_schema = tools_to_schema(tools)
+                system_prompt = SYSTEM_PROMPT_JSON.format(tools_schema=tools_schema) if self.format == "json" else SYSTEM_PROMPT_PYTHON.format(tools_schema=tools_schema)
         except Exception as e:
             result = f'[error.message(error="{str(e)}")]'
-            print(f"An error occurred: {str(e)}")
+            print(f"ERROR:\n{e}")
             return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0, "n_tool_calls": self.n_tool_calls, "tool_calls": [], "messages": ""}
 
         # Prompt
@@ -102,7 +107,7 @@ class OutlinesVllmHandler(BaseHandler):
             result = bfcl_format(tool_calls)
         except Exception as e:
             result = f'[error.message(error="{e}")]'
-            print(f"An error occurred: {e}")
+            print(f"ERROR:\n{e}")
             return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0,  "n_tool_calls": self.n_tool_calls, "tool_calls": [], "messages": ""}
 
         # Record info
