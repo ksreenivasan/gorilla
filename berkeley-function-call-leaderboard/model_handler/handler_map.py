@@ -78,6 +78,7 @@ handler_map = {
     # "meta-llama/Meta-Llama-3-70B-Instruct": LlamaHandler,
     "meta-llama/Meta-Llama-3-8B-Instruct": OutlinesVllmHandler,
     "meta-llama/Meta-Llama-3-70B-Instruct": OutlinesVllmHandler,
+    "/checkpoint": OutlinesVllmHandler,
     "command-r-plus-FC": CohereHandler,
     "command-r-plus": CohereHandler,
     "command-r-plus-FC-optimized": CohereHandler,
