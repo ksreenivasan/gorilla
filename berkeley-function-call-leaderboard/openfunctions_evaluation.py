@@ -132,7 +132,7 @@ def fingerprint(args, generations_dir):
     os.makedirs(os.path.dirname(fingerprint_path), exist_ok=True)
 
     # values to record
-    write_values = ["model", "temperature", "top_p", "max_tokens", "gen_mode", "limit", "limit_start", "n_tool_calls"]
+    write_values = ["model", "temperature", "top_p", "max_tokens", "gen_mode", "limit", "limit_start", "n_tool_calls", "format"]
 
     # Open the output file in write mode
     with open(fingerprint_path, 'w') as file:
@@ -189,7 +189,6 @@ if __name__ == "__main__":
     generations_dir = os.path.join(model_dir, "generations")
     fingerprint(args, model_dir)
     num_workers = multiprocessing.cpu_count() if args.num_workers is None else args.num_workers
-    num_workers = 4
 
     if USE_COHERE_OPTIMIZATION and "command-r-plus" in args.model:
         args.model = args.model + "-optimized"
