@@ -36,9 +36,9 @@ def get_args():
     parser.add_argument("--test-category", type=str, default="all", help="Evaluate multiple categories by inputting a list of categories separated by commas (no spaces).")
 
     # Parameters for the model that you want to test.
-    parser.add_argument("--temperature", type=float, default=0.7)
+    parser.add_argument("--temperature", type=float, default=0)
     parser.add_argument("--top-p", type=float, default=1)
-    parser.add_argument("--max-tokens", type=int, default=1200)
+    parser.add_argument("--max-tokens", type=int, default=4096)
     parser.add_argument("--gen-mode", default="conditional", type=str)
     parser.add_argument("--limit", type=int, default=None, help="Number of samples to solve and evaluate from the benchmark")
     parser.add_argument("--limit-start", type=int, default=0, help="Optional offset to start from when limiting the number of samples")
@@ -189,6 +189,7 @@ if __name__ == "__main__":
     generations_dir = os.path.join(model_dir, "generations")
     fingerprint(args, model_dir)
     num_workers = multiprocessing.cpu_count() if args.num_workers is None else args.num_workers
+    num_workers = 4
 
     if USE_COHERE_OPTIMIZATION and "command-r-plus" in args.model:
         args.model = args.model + "-optimized"
