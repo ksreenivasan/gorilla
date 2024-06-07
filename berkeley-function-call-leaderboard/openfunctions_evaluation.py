@@ -223,30 +223,3 @@ if __name__ == "__main__":
                 for result_to_write in tqdm(executor.map(pipeline, params), total=len(params)):
                     if result_to_write is not None:
                         handler.write(result_to_write, generations_path)
-
-
-
-            # for index in tqdm(range(args.limit_start, args.limit_start + n_tasks)):
-            #     test_case = test_cases[index]
-
-            # for index, test_case in enumerate(tqdm(test_cases)):
-                # if index < num_existing_result:
-                #     continue
-                # user_question, functions = test_case["question"], test_case["function"]
-                # if type(functions) is dict or type(functions) is str:
-                #     functions = [functions]
-                # result, metadata = handler.inference(user_question, functions, test_category)
-                # result_to_write = {
-                #     "idx": index,
-                #     "result": result,
-                #     "input_token_count": metadata["input_tokens"],
-                #     "output_token_count": metadata["output_tokens"],
-                #     "latency": metadata["latency"],
-                # }
-                # if "messages" in metadata:
-                #     result_to_write["messages"] = metadata["messages"]
-                # if "tool_calls" in metadata:
-                #     result_to_write["tool_calls"] = metadata["tool_calls"]
-                # if "n_tool_calls" in metadata:
-                #     result_to_write["n_tool_calls"] = metadata["n_tool_calls"]
-                # handler.write(result_to_write, generations_path)
