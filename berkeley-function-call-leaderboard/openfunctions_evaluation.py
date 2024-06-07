@@ -189,6 +189,7 @@ if __name__ == "__main__":
     generations_dir = os.path.join(model_dir, "generations")
     fingerprint(args, model_dir)
     num_workers = multiprocessing.cpu_count() if args.num_workers is None else args.num_workers
+    print(f"Using {num_workers} workers.")
 
     if USE_COHERE_OPTIMIZATION and "command-r-plus" in args.model:
         args.model = args.model + "-optimized"
