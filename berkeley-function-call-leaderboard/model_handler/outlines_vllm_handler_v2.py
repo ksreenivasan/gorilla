@@ -86,12 +86,11 @@ class OutlinesVllmHandler(BaseHandler):
 
             user_prompt = user_query
             if self.user_prompt_style is not None:
-                user_prompt = style_to_user_prompt[self.user_prompt_style]
+                user_prompt = style_to_user_prompt[self.user_prompt_style].format(functions=str(tools), user_prompt=user_query)
 
         return system_prompt, user_prompt
 
     def inference(self, user_query, tools, test_category):
-
         # get n_tool_calls
         if self._n_tool_calls == "solution" and test_category == "relevance":
             raise ValueError("Solutions is not valid for relevance category.")
@@ -101,25 +100,23 @@ class OutlinesVllmHandler(BaseHandler):
         else:
             self.n_tool_calls = self._n_tool_calls
 
-        # Get schema for tool use while getting the system prompt
+        # Get messages
         try:
             system_prompt, user_prompt = self.get_prompt(tools, user_query)
         except Exception as e:
             result = f'[error.message(error="{e}")]'
             print(f"ERROR:\n{e}")
             return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0, "n_tool_calls": self.n_tool_calls, "tool_calls": [], "messages": ""}
-
-        # Prompt
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-            ]
+        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
 
         # Generate tool calls
         try:
             start = time.time()
             output_messages, tool_calls = self.tool(messages, gen_mode=self.gen_mode, tools=tools, n_tool_calls=self.n_tool_calls)
-            result = bfcl_format(tool_calls)
+            if self.user_prompt_style == "json" or self.system_prompt_style == "json":
+                result = bfcl_format(tool_calls)
+            else: # python
+                result = output_messages[-1]["content"]
         except Exception as e:
             result = f'[error.message(error="{e}")]'
             print(f"ERROR:\n{e}")
