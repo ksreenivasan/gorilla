@@ -53,6 +53,8 @@ def get_args():
     parser.add_argument("--system-prompt-style", type=str, default=None)
 
     args = parser.parse_args()
+    args.system_prompt_style = None if args.system_prompt_style == "None" else args.system_prompt_style
+    args.user_prompt_style = None if args.user_prompt_style == "None" else args.user_prompt_style
     return args
 
 
