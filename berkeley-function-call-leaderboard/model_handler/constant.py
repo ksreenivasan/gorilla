@@ -20,8 +20,6 @@ USER_PROMPT_FOR_CHAT_MODEL_JSON = """
     NO other text MUST be included.
 """
 
-
-
 SYSTEM_PROMPT_JSON = """You are a function calling AI model. Your job is to answer the user's questions and you may call one or more functions to do this.
 
     Please use your own judgment as to whether or not you should call a function. In particular, you must follow these guiding principles:
@@ -84,6 +82,17 @@ SYSTEM_PROMPT_PYTHON = """You are a function calling AI model. Your job is to an
     Remember, don't make assumptions about what values to plug into functions. If you are missing the parameters to make a function call, please ask the user for the parameters. Do not be afraid to ask.
     """
 
+style_to_system_prompt = {
+    "default": SYSTEM_PROMPT_FOR_CHAT_MODEL,
+    "json": SYSTEM_PROMPT_JSON,
+    "python": SYSTEM_PROMPT_PYTHON,
+}
+
+style_to_user_prompt = {
+    "default": USER_PROMPT_FOR_CHAT_MODEL_PYTHON,
+    "json": USER_PROMPT_FOR_CHAT_MODEL_JSON,
+    "python": USER_PROMPT_FOR_CHAT_MODEL_PYTHON,
+}
 
 GORILLA_TO_OPENAPI = {
     "integer": "integer",

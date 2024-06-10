@@ -49,7 +49,8 @@ def get_args():
     parser.add_argument("--num-gpus", default=1, type=int)
     parser.add_argument("--timeout", default=60, type=int)
     parser.add_argument("--num-workers", default=None, type=int)
-    parser.add_argument("--format", type=str, default="python")
+    parser.add_argument("--user-prompt-style", type=str, default=None)
+    parser.add_argument("--system-prompt-style", type=str, default=None)
 
     args = parser.parse_args()
     return args
@@ -82,19 +83,22 @@ def extract_tuple(text):
         return False
 
 
-def build_handler(model_name, temperature, top_p, max_tokens, gen_mode, n_tool_calls, format):
-    handler = handler_map[model_name](model_name, temperature, top_p, max_tokens)
+def build_handler(args):
+    handler = handler_map[args.model](args.model, args.temperature, args.top_p, args.max_tokens)
     if "gen_mode" in vars(handler):
-        handler.gen_mode = gen_mode
+        handler.gen_mode = args.gen_mode
     if "_n_tool_calls" in vars(handler):
+        n_tool_calls = args.n_tool_calls
         if n_tool_calls in ["solution", "auto"]:
-            handler._n_tool_calls = n_tool_calls
+            handler._n_tool_calls = args.n_tool_calls
         elif sum([char.isdigit() for char in n_tool_calls]) == len(n_tool_calls):
-            handler._n_tool_calls = int(n_tool_calls)
+            handler._n_tool_calls = int(args.n_tool_calls)
         elif extract_tuple(n_tool_calls):
             handler._n_tool_calls = extract_tuple(n_tool_calls)
-    if "format" in vars(handler):
-        handler.format = format
+    if "user_prompt_style" in vars(handler):
+        handler.user_prompt_style = args.user_prompt_style
+    if "system_prompt_style" in vars(handler):
+        handler.system_prompt_style = args.system_prompt_style
     return handler
 
 
@@ -132,12 +136,14 @@ def fingerprint(args, generations_dir):
     os.makedirs(os.path.dirname(fingerprint_path), exist_ok=True)
 
     # values to record
-    write_values = ["model", "temperature", "top_p", "max_tokens", "gen_mode", "limit", "limit_start", "n_tool_calls", "format"]
+    write_values = ["model", "temperature", "top_p", "max_tokens", "gen_mode", "limit", "limit_start", "n_tool_calls", "system_prompt_style", "user_prompt_style"]
 
     # Open the output file in write mode
     with open(fingerprint_path, 'w') as file:
         # Write each argument as a JSON object on a new line
         for key in write_values:
+            if key not in args_dict:
+                continue
             value = args_dict[key]
             json_line = json.dumps({key: value})
             file.write(json_line + '\n')
@@ -193,7 +199,7 @@ if __name__ == "__main__":
 
     if USE_COHERE_OPTIMIZATION and "command-r-plus" in args.model:
         args.model = args.model + "-optimized"
-    handler = build_handler(args.model, args.temperature, args.top_p, args.max_tokens, args.gen_mode, args.n_tool_calls, args.format)
+    handler = build_handler(args)
 
     if handler.model_style == ModelStyle.OSSMODEL:
         result = handler.inference(
