@@ -7,13 +7,14 @@ from functools import reduce
 from typing import Union
 
 import torch
-from model_handler.constant import GORILLA_TO_OPENAPI
+from model_handler.constant import style_to_system_prompt, style_to_user_prompt
 from model_handler.handler import BaseHandler
 from model_handler.model_style import ModelStyle
 from model_handler.utils import _cast_to_openai_type, ast_parse
 from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_signature
 from tool_use.prompt import get_meta_tool_system_prompt, get_system_prompt
 from tool_use.tool import Tool
+from tool_use.utils.regex_util import tools_to_schema
 
 
 class OutlinesVllmHandler(BaseHandler):
@@ -27,18 +28,23 @@ class OutlinesVllmHandler(BaseHandler):
         seed=42,
         gen_mode="conditional",
         n_tool_calls=1,
+        user_prompt_style="json",
+        system_prompt_style=None,
         ) -> None:
 
         self.model_style = ModelStyle.Outlines
         self._n_tool_calls = n_tool_calls
         self.n_tool_calls = None
         self.gen_mode = gen_mode
+        self.user_prompt_style = user_prompt_style
+        self.system_prompt_style = system_prompt_style
+
+        self.gen_kwargs = dict(temperature=temperature, top_p=top_p, max_tokens=max_tokens)
         super().__init__(model_name, temperature, top_p, max_tokens)
 
         # Initialize tool
         self.base_url = "http://localhost:8000/v1"
         self.api_key = "-"
-        self.gen_kwargs = dict(temperature=temperature, top_p=top_p, max_tokens=max_tokens)
         self.tool = Tool(self.base_url, self.api_key, self.model_name, gen_kwargs=self.gen_kwargs)
 
     def load_solution(self, user_query, test_category):
@@ -67,8 +73,24 @@ class OutlinesVllmHandler(BaseHandler):
 
         return solution
 
-    def inference(self, user_query, tools, test_category):
+    def get_prompt(self, tools, user_query):
+        if self.gen_mode == "meta_tool":
+            system_prompt = get_meta_tool_system_prompt(tools)
+            user_prompt = user_query
+        else:
 
+            system_prompt = ""
+            if self.system_prompt_style is not None:
+                tools_schema = tools_to_schema(tools)
+                system_prompt = style_to_system_prompt[self.system_prompt_style].format(tools_schema=tools_schema)
+
+            user_prompt = user_query
+            if self.user_prompt_style is not None:
+                user_prompt = style_to_user_prompt[self.user_prompt_style].format(functions=str(tools), user_prompt=user_query)
+
+        return system_prompt, user_prompt
+
+    def inference(self, user_query, tools, test_category):
         # get n_tool_calls
         if self._n_tool_calls == "solution" and test_category == "relevance":
             raise ValueError("Solutions is not valid for relevance category.")
@@ -78,31 +100,26 @@ class OutlinesVllmHandler(BaseHandler):
         else:
             self.n_tool_calls = self._n_tool_calls
 
-        # Get schema for tool use while getting the system prompt
+        # Get messages
         try:
-            if self.gen_mode == "meta_tool":
-                system_prompt = get_meta_tool_system_prompt(tools)
-            else:
-                system_prompt = get_system_prompt(tools)
+            system_prompt, user_prompt = self.get_prompt(tools, user_query)
         except Exception as e:
-            result = f'[error.message(error="{str(e)}")]'
-            print(f"An error occurred: {str(e)}")
+            result = f'[error.message(error="{e}")]'
+            print(f"ERROR:\n{e}")
             return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0, "n_tool_calls": self.n_tool_calls, "tool_calls": [], "messages": ""}
-
-        # Prompt
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_query},
-            ]
+        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
 
         # Generate tool calls
         try:
             start = time.time()
             output_messages, tool_calls = self.tool(messages, gen_mode=self.gen_mode, tools=tools, n_tool_calls=self.n_tool_calls)
-            result = bfcl_format(tool_calls)
+            if self.user_prompt_style == "json" or self.system_prompt_style == "json":
+                result = bfcl_format(tool_calls)
+            else: # python
+                result = output_messages[-1]["content"]
         except Exception as e:
             result = f'[error.message(error="{e}")]'
-            print(f"An error occurred: {e}")
+            print(f"ERROR:\n{e}")
             return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0,  "n_tool_calls": self.n_tool_calls, "tool_calls": [], "messages": ""}
 
         # Record info

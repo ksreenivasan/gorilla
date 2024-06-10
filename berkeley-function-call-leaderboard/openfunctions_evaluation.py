@@ -36,9 +36,9 @@ def get_args():
     parser.add_argument("--test-category", type=str, default="all", help="Evaluate multiple categories by inputting a list of categories separated by commas (no spaces).")
 
     # Parameters for the model that you want to test.
-    parser.add_argument("--temperature", type=float, default=0.7)
+    parser.add_argument("--temperature", type=float, default=0)
     parser.add_argument("--top-p", type=float, default=1)
-    parser.add_argument("--max-tokens", type=int, default=1200)
+    parser.add_argument("--max-tokens", type=int, default=4096)
     parser.add_argument("--gen-mode", default="conditional", type=str)
     parser.add_argument("--limit", type=int, default=None, help="Number of samples to solve and evaluate from the benchmark")
     parser.add_argument("--limit-start", type=int, default=0, help="Optional offset to start from when limiting the number of samples")
@@ -49,9 +49,12 @@ def get_args():
     parser.add_argument("--num-gpus", default=1, type=int)
     parser.add_argument("--timeout", default=60, type=int)
     parser.add_argument("--num-workers", default=None, type=int)
-    parser.add_argument("--format", type=str, default="python")
+    parser.add_argument("--user-prompt-style", type=str, default=None)
+    parser.add_argument("--system-prompt-style", type=str, default=None)
 
     args = parser.parse_args()
+    args.system_prompt_style = None if args.system_prompt_style == "None" else args.system_prompt_style
+    args.user_prompt_style = None if args.user_prompt_style == "None" else args.user_prompt_style
     return args
 
 
@@ -82,19 +85,22 @@ def extract_tuple(text):
         return False
 
 
-def build_handler(model_name, temperature, top_p, max_tokens, gen_mode, n_tool_calls, format):
-    handler = handler_map[model_name](model_name, temperature, top_p, max_tokens)
+def build_handler(args):
+    handler = handler_map[args.model](args.model, args.temperature, args.top_p, args.max_tokens)
     if "gen_mode" in vars(handler):
-        handler.gen_mode = gen_mode
+        handler.gen_mode = args.gen_mode
     if "_n_tool_calls" in vars(handler):
+        n_tool_calls = args.n_tool_calls
         if n_tool_calls in ["solution", "auto"]:
-            handler._n_tool_calls = n_tool_calls
+            handler._n_tool_calls = args.n_tool_calls
         elif sum([char.isdigit() for char in n_tool_calls]) == len(n_tool_calls):
-            handler._n_tool_calls = int(n_tool_calls)
+            handler._n_tool_calls = int(args.n_tool_calls)
         elif extract_tuple(n_tool_calls):
             handler._n_tool_calls = extract_tuple(n_tool_calls)
-    if "format" in vars(handler):
-        handler.format = format
+    if "user_prompt_style" in vars(handler):
+        handler.user_prompt_style = args.user_prompt_style
+    if "system_prompt_style" in vars(handler):
+        handler.system_prompt_style = args.system_prompt_style
     return handler
 
 
@@ -132,12 +138,14 @@ def fingerprint(args, generations_dir):
     os.makedirs(os.path.dirname(fingerprint_path), exist_ok=True)
 
     # values to record
-    write_values = ["model", "temperature", "top_p", "max_tokens", "gen_mode", "limit", "limit_start", "n_tool_calls"]
+    write_values = ["model", "temperature", "top_p", "max_tokens", "gen_mode", "limit", "limit_start", "n_tool_calls", "system_prompt_style", "user_prompt_style"]
 
     # Open the output file in write mode
     with open(fingerprint_path, 'w') as file:
         # Write each argument as a JSON object on a new line
         for key in write_values:
+            if key not in args_dict:
+                continue
             value = args_dict[key]
             json_line = json.dumps({key: value})
             file.write(json_line + '\n')
@@ -193,7 +201,7 @@ if __name__ == "__main__":
 
     if USE_COHERE_OPTIMIZATION and "command-r-plus" in args.model:
         args.model = args.model + "-optimized"
-    handler = build_handler(args.model, args.temperature, args.top_p, args.max_tokens, args.gen_mode, args.n_tool_calls, args.format)
+    handler = build_handler(args)
 
     if handler.model_style == ModelStyle.OSSMODEL:
         result = handler.inference(
@@ -224,30 +232,3 @@ if __name__ == "__main__":
                 for result_to_write in tqdm(executor.map(pipeline, params), total=len(params)):
                     if result_to_write is not None:
                         handler.write(result_to_write, generations_path)
-
-
-
-            # for index in tqdm(range(args.limit_start, args.limit_start + n_tasks)):
-            #     test_case = test_cases[index]
-
-            # for index, test_case in enumerate(tqdm(test_cases)):
-                # if index < num_existing_result:
-                #     continue
-                # user_question, functions = test_case["question"], test_case["function"]
-                # if type(functions) is dict or type(functions) is str:
-                #     functions = [functions]
-                # result, metadata = handler.inference(user_question, functions, test_category)
-                # result_to_write = {
-                #     "idx": index,
-                #     "result": result,
-                #     "input_token_count": metadata["input_tokens"],
-                #     "output_token_count": metadata["output_tokens"],
-                #     "latency": metadata["latency"],
-                # }
-                # if "messages" in metadata:
-                #     result_to_write["messages"] = metadata["messages"]
-                # if "tool_calls" in metadata:
-                #     result_to_write["tool_calls"] = metadata["tool_calls"]
-                # if "n_tool_calls" in metadata:
-                #     result_to_write["n_tool_calls"] = metadata["n_tool_calls"]
-                # handler.write(result_to_write, generations_path)
