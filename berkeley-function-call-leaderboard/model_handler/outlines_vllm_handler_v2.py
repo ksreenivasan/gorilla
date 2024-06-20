@@ -11,10 +11,11 @@ from model_handler.constant import style_to_system_prompt, style_to_user_prompt
 from model_handler.handler import BaseHandler
 from model_handler.model_style import ModelStyle
 from model_handler.utils import _cast_to_openai_type, ast_parse
-from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_signature
 from tool_use.prompt import get_meta_tool_system_prompt, get_system_prompt
 from tool_use.tool import Tool
 from tool_use.utils.regex_util import tools_to_schema
+
+from outlines.fsm.json_schema import build_regex_from_schema, get_schema_from_signature
 
 
 class OutlinesVllmHandler(BaseHandler):
