@@ -5,6 +5,7 @@ import os
 import re
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
+from pprint import pp
 
 from model_handler.constant import USE_COHERE_OPTIMIZATION
 from model_handler.handler_map import handler_map
@@ -55,6 +56,8 @@ def get_args():
     args = parser.parse_args()
     args.system_prompt_style = None if args.system_prompt_style == "None" else args.system_prompt_style
     args.user_prompt_style = None if args.user_prompt_style == "None" else args.user_prompt_style
+
+    pp({k: v for k, v in vars(args).items()})
     return args
 
 
