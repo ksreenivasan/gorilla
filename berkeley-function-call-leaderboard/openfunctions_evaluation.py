@@ -31,27 +31,29 @@ test_categories = {
 
 def get_args():
     parser = argparse.ArgumentParser()
-    # Refer to model_choice for supported models.
-    parser.add_argument("--model", type=str, default="gorilla-openfunctions-v2")
-    # Refer to test_categories for supported categories.
+    # the evals to run
     parser.add_argument("--test-category", type=str, default="all", help="Evaluate multiple categories by inputting a list of categories separated by commas (no spaces).")
 
-    # Parameters for the model that you want to test.
+    # gen_kwargs + model parameters
+    parser.add_argument("--model", type=str, default="gorilla-openfunctions-v2")
+    parser.add_argument("--user-prompt-style", type=str, default=None)
+    parser.add_argument("--system-prompt-style", type=str, default=None)
     parser.add_argument("--temperature", type=float, default=0)
     parser.add_argument("--top-p", type=float, default=1)
     parser.add_argument("--max-tokens", type=int, default=4096)
     parser.add_argument("--gen-mode", default="conditional", type=str)
-    parser.add_argument("--limit", type=int, default=None, help="Number of samples to solve and evaluate from the benchmark")
-    parser.add_argument("--limit-start", type=int, default=0, help="Optional offset to start from when limiting the number of samples")
     parser.add_argument("--n-tool-calls", default="solution", help="Should be either 'solution, 'auto', an int, or a tuple of ints.")
 
+    # file parameters
+    parser.add_argument("--limit", type=int, default=None, help="Number of samples to solve and evaluate from the benchmark")
+    parser.add_argument("--limit-start", type=int, default=0, help="Optional offset to start from when limiting the number of samples")
     parser.add_argument("--reset", action='store_true', help="Reset the number of saved options.")
     parser.add_argument("--output-dir", type=str, default="./outputs", help="Path for saving the output generations")
-    parser.add_argument("--num-gpus", default=1, type=int)
+
+    # compute parameters
     parser.add_argument("--timeout", default=60, type=int)
+    parser.add_argument("--num-gpus", default=1, type=int)
     parser.add_argument("--num-workers", default=None, type=int)
-    parser.add_argument("--user-prompt-style", type=str, default=None)
-    parser.add_argument("--system-prompt-style", type=str, default=None)
 
     args = parser.parse_args()
     args.system_prompt_style = None if args.system_prompt_style == "None" else args.system_prompt_style
