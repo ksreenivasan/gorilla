@@ -41,7 +41,7 @@ def get_args():
     parser.add_argument("--temperature", type=float, default=0)
     parser.add_argument("--top-p", type=float, default=1)
     parser.add_argument("--max-tokens", type=int, default=4096)
-    parser.add_argument("--gen-mode", default="conditional", type=str)
+    parser.add_argument("--gen-mode", default="unstructured", type=str)
     parser.add_argument("--n-tool-calls", default="solution", help="Should be either 'solution, 'auto', an int, or a tuple of ints.")
 
     # file parameters
