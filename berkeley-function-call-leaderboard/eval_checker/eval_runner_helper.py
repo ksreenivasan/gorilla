@@ -403,6 +403,12 @@ MODEL_METADATA_MAPPING = {
         "https://huggingface.co/google/gemma-7b-it",
         "Google",
         "gemma",
+    ],
+    "/checkpoint": [
+        "custom-checkpoint",
+        "my-checkpoint.com",
+        "custom",
+        "custom",
     ]
 }
 
