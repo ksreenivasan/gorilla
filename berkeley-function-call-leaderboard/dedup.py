@@ -31,18 +31,30 @@ def get_generations(path):
             generations.append(json.loads(line))
     return generations
 
+def get_functions(data_path, generations_path):
+    category_path = generations_path.split("/")[-1]
+    functions_path = os.path.join(data_path, category_path)
 
-def remove_duplicates(json_list):
-    unique_json_list = []
-    unique_json_strings = set()
+    functions = []
+    with open(functions_path, "r") as f:
+        for line in f:
+            data = json.loads(line)
+            function = data["function"] if isinstance(data["function"], list) else [data["function"]]
+            functions.append(function)
+    return functions
 
-    for json_obj in json_list:
-        json_string = json.dumps(json_obj, sort_keys=True)
-        if json_string not in unique_json_strings:
-            unique_json_list.append(json_obj)
-            unique_json_strings.add(json_string)
 
-    return unique_json_list
+def remove_duplicates(original_tool_calls, new_tool_calls):
+    unique_tool_calls = []
+    unique_tool_calls_strs = set()
+
+    for new_tool_call, original_tool_call in zip(new_tool_calls, original_tool_calls):
+        new_tool_call_str = json.dumps(new_tool_call, sort_keys=True)
+        if new_tool_call_str not in unique_tool_calls_strs:
+            unique_tool_calls.append(original_tool_call)
+            unique_tool_calls_strs.add(new_tool_call_str)
+
+    return unique_tool_calls
 
 
 def bfcl_format(tool_calls):
@@ -57,18 +69,46 @@ def bfcl_format(tool_calls):
     return result
 
 
-def get_new_generations(generations):
+def fill_in_default_params(tool_calls, func):
+    tool_name_to_default_params = {}
+    for f in func:
+        name = f["name"]
+        params = f["parameters"]["properties"]
+        default_params = [(param_name, param_value["default"]) for param_name, param_value in params.items() if "default" in param_value]
+        tool_name_to_default_params[name] = default_params
+
+
+    new_tool_calls = []
+    for tool_call in copy.deepcopy(tool_calls):
+        tool_name, generated_tool_arguments = tool_call["tool_name"], tool_call["tool_arguments"]
+        for (p_name, p_value) in default_params:
+            if p_name not in generated_tool_arguments:
+                generated_tool_arguments[p_name] = p_value
+        new_tool_calls.append({"tool_name": tool_name, "tool_arguments": generated_tool_arguments})
+    return new_tool_calls
+
+
+def get_new_generations(generations, functions):
 
     new_generations = []
     _generations = copy.deepcopy(generations)
-    for i, gen in enumerate(_generations):
+    for i, (gen, func) in enumerate(zip(_generations, functions)):
+
+        # check for error
         result = gen["result"]
         if "error" in result:
             new_generations.append(gen)
             continue
+
+        # get tool_call
         tool_calls = gen["tool_calls"]
-        tool_calls = remove_duplicates(tool_calls)
-        new_result = bfcl_format(tool_calls)
+
+        # deduplicate tool_call, taking into account default parameters
+        tool_calls_with_defaults = fill_in_default_params(tool_calls, func)
+        new_tool_calls = remove_duplicates(tool_calls, tool_calls_with_defaults)
+
+        # format ded-deduplicated tool_call
+        new_result = bfcl_format(new_tool_calls)
         gen["result"] = new_result
         gen["tool_calls"] = tool_calls
         new_generations.append(gen)
@@ -107,8 +147,8 @@ def get_args():
     parser = argparse.ArgumentParser(description='Process model directory and output directory.')
 
     # Add arguments
-    parser.add_argument('--out-dir', type=str, required=True,
-                        help='Path to the directory containing the model files.')
+    parser.add_argument('--out-dir', type=str, required=True, help='Path to the directory containing the model files.')
+    parser.add_argument('--data-dir', type=str, required=True, help='Path to the directory containing the data with the functions themselves.')
 
     # Parse the arguments
     args = parser.parse_args()
@@ -119,6 +159,7 @@ def main():
     # Load args
     args = get_args()
     model_dirs = get_directories(args.out_dir)
+    print("Deduplicating the following generations:")
 
     # Loop over all model dirs
     for model_dir in model_dirs:
@@ -132,12 +173,14 @@ def main():
         new_fingerprint(model_dir, new_model_dir)
 
         for generations_path in generations_paths:
+            print("\t", generations_path)
 
             # Load generations
             generations = get_generations(generations_path)
+            functions = get_functions(args.data_dir, generations_path)
 
             # Make new generations
-            new_generations = get_new_generations(generations)
+            new_generations = get_new_generations(generations, functions)
 
             # Save new generations
             save_new_generations(new_model_dir, generations_path, new_generations)
