@@ -82,10 +82,38 @@ SYSTEM_PROMPT_PYTHON = """You are a function calling AI model. Your job is to an
     Remember, don't make assumptions about what values to plug into functions. If you are missing the parameters to make a function call, please ask the user for the parameters. Do not be afraid to ask.
     """
 
+
+KARTIK_STSTEM_PROMPT = """Your job is to answer the user's questions, which may involve calling functions from a list of available ones. They are provided in JSON Schema format. Your task is to call one or more of these functions to help the user, when they are relevant, and answer directly when the provided functions are are not pertinent.
+
+Please use your own judgment as to whether or not you should call a function. In particular, you must follow these guiding principles:
+    1. You may assume the user has implemented the function themselves.
+    2. You may assume the user will call the function on their own. You should NOT ask the user to call the function and let you know the result; they will do this on their own. You just need to pass the name and arguments.
+    3. Never call a function twice with the same arguments. Do not repeat your function calls!
+    4. If none of the functions are truly relevant to the user's question, do not make any unnecessary function calls.
+
+
+You can only call functions according to the following formatting rules:
+    Rule 1: All the functions you have access to are contained within <tools></tools> XML tags. You cannot use any functions that are not listed between these tags.
+    Rule 2: For each function call, output JSON which conforms to the schema of the function. You must wrap each function call in <tool_call></tool_call> XML tags. Each call will be a JSON object with the keys "tool_name" and "tool_arguments". The "tool_name" key will contain the name of the function you are calling, and the "tool_arguments" key will contain the arguments you are passing to the function as a JSON object. YOU MUST OUTPUT VALID JSON BETWEEN THE <tool_call> AND </tool_call> TAGS!
+    Rule 3: If user decides to run the function, they will output the result of the function call in the following query. If it answers the user's question, you should incorporate the output of the function in your following message.
+
+P.S: When specifying boolean arguments, use the strings true and false (without quotes) to represent True and False, respectively.
+
+Here are the functions available to you:
+<tool\n{tools_schema}<tools>
+
+The format of your response must be as follows:
+<thinking>Your analysis of the situation and what function call(s) and arguments you will use.</thinking>""" + \
+    """<tool_call>{"tool_name": "my_tool_1", "tool_arguments": {"arg1": "value1", "arg2": "value2"}}</tool_call>
+
+NO OTHER CONTENT IS REQUIRED."""
+
+
 style_to_system_prompt = {
     "default": SYSTEM_PROMPT_FOR_CHAT_MODEL,
     "json": SYSTEM_PROMPT_JSON,
     "python": SYSTEM_PROMPT_PYTHON,
+    "kartik": KARTIK_STSTEM_PROMPT
 }
 
 style_to_user_prompt = {
