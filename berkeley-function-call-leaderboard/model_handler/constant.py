@@ -104,7 +104,7 @@ Here are the functions available to you:
 
 The format of your response must be as follows:
 <thinking>Your analysis of the situation and what function call(s) and arguments you will use.</thinking>""" + \
-    """<tool_call>{"tool_name": "my_tool_1", "tool_arguments": {"arg1": "value1", "arg2": "value2"}}</tool_call>
+    """<tool_call>{{"tool_name": "my_tool_1", "tool_arguments": {{"arg1": "value1", "arg2": "value2"}}}}</tool_call>
 
 NO OTHER CONTENT IS REQUIRED."""
 
