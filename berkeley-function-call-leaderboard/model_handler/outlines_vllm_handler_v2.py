@@ -74,19 +74,15 @@ class OutlinesVllmHandler(BaseHandler):
         return solution
 
     def get_prompt(self, tools, user_query):
-        if self.gen_mode == "tool-selector":
-            system_prompt = get_tool_selector_system_prompt(tools)
-            user_prompt = user_query
-        else:
 
-            system_prompt = ""
-            if self.system_prompt_style is not None:
-                tools_schema = tools_to_schema(tools)
-                system_prompt = style_to_system_prompt[self.system_prompt_style].format(tools_schema=tools_schema)
+        system_prompt = ""
+        if self.system_prompt_style is not None:
+            tools_schema = tools_to_schema(tools)
+            system_prompt = style_to_system_prompt[self.system_prompt_style].format(tools_schema=tools_schema)
 
-            user_prompt = user_query
-            if self.user_prompt_style is not None:
-                user_prompt = style_to_user_prompt[self.user_prompt_style].format(functions=str(tools), user_prompt=user_query)
+        user_prompt = user_query
+        if self.user_prompt_style is not None:
+            user_prompt = style_to_user_prompt[self.user_prompt_style].format(functions=str(tools), user_prompt=user_query)
 
         return system_prompt, user_prompt
 
