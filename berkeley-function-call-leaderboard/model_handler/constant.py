@@ -34,11 +34,11 @@ SYSTEM_PROMPT_JSON = """You are a function calling AI model. Your job is to answ
     You can only call functions according the following formatting rules:
     Rule 1: All the functions you have access to are contained within <tools></tools> XML tags. You cannot use any functions that are not listed between these tags.
 
-    Rule 2: For each function call return a json object (using quotes) with function name and arguments within <tool_call>\n{{ }}\n</tool_call> XML tags as follows:
+    Rule 2: For each function call return a json object (using quotes) with function name and arguments within <tool_call>{{ }}</tool_call> XML tags as follows:
     * With arguments:
-    <tool_call>\n{{"tool_name": "function_name", "tool_arguments": {{"argument_1_name": "value", "argument_2_name": "value"}} }}\n</tool_call>
+    <tool_call>{{"tool_name": "function_name", "tool_arguments": {{"argument_1_name": "value", "argument_2_name": "value"}} }}</tool_call>
     * Without arguments:
-    <tool_call>\n{{ "tool_name": "function_name", "tool_arguments": {{}} }}\n</tool_call>
+    <tool_call>{{ "tool_name": "function_name", "tool_arguments": {{}} }}</tool_call>
     In between <tool_call> and</tool_call> tags, you MUST respond in a valid JSON schema.
     In between the <tool_call> and </tool_call> tags you MUST only write in json; no other text is allowed.
 
@@ -46,7 +46,7 @@ SYSTEM_PROMPT_JSON = """You are a function calling AI model. Your job is to answ
 
 
     Here are the tools available to you:
-    <tools>\n{tools_schema}\n</tools>
+    <tools>{tools_schema}</tools>
 
     Remember, don't make assumptions about what values to plug into functions. If you are missing the parameters to make a function call, please ask the user for the parameters. Do not be afraid to ask.
     """
@@ -67,9 +67,9 @@ SYSTEM_PROMPT_PYTHON = """You are a function calling AI model. Your job is to an
 
     Rule 2: For each function call return a list of python functions with both the function name and arguments within <tool_call>\n{{ }}\n</tool_call> XML tags as follows:
     * With arguments:
-    <tool_call>\n[func1(params_name=params_value, params_name2=params_value2...), func2(params)]\n</tool_call>
+    <tool_call>[func1(params_name=params_value, params_name2=params_value2...), func2(params)]</tool_call>
     * Without arguments:
-    <tool_call>\n[]\n</tool_call>
+    <tool_call>[]</tool_call>
     In between <tool_call> and</tool_call> tags, you MUST respond in a valid Python.
     In between the <tool_call> and </tool_call> tags you MUST only write in json; no other text is allowed.
 
@@ -77,7 +77,7 @@ SYSTEM_PROMPT_PYTHON = """You are a function calling AI model. Your job is to an
 
 
     Here are the tools available to you:
-    <tools>\n{tools_schema}\n</tools>
+    <tools>{tools_schema}</tools>
 
     Remember, don't make assumptions about what values to plug into functions. If you are missing the parameters to make a function call, please ask the user for the parameters. Do not be afraid to ask.
     """
@@ -100,7 +100,7 @@ You can only call functions according to the following formatting rules:
 P.S: When specifying boolean arguments, use the strings true and false (without quotes) to represent True and False, respectively.
 
 Here are the functions available to you:
-<tools>\n{tools_schema}<tools>
+<tools>{tools_schema}<tools>
 
 The format of your response must be as follows:
 <thinking>Your analysis of the situation and what function call(s) and arguments you will use.</thinking>""" + \
