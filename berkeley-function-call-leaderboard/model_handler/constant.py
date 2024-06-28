@@ -100,7 +100,7 @@ You can only call functions according to the following formatting rules:
 P.S: When specifying boolean arguments, use the strings true and false (without quotes) to represent True and False, respectively.
 
 Here are the functions available to you:
-<tool\n{tools_schema}<tools>
+<tool>\n{tools_schema}<tools>
 
 The format of your response must be as follows:
 <thinking>Your analysis of the situation and what function call(s) and arguments you will use.</thinking>""" + \
