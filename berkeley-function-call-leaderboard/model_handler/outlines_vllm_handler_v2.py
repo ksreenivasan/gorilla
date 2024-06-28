@@ -106,6 +106,7 @@ class OutlinesVllmHandler(BaseHandler):
         messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
 
         # Generate tool calls
+        tool_calls, output_messages = [], None
         try:
             start = time.time()
             output_messages, tool_calls = self.tool(messages, gen_mode=self.gen_mode, tools=tools, n_tool_calls=self.n_tool_calls)
@@ -116,7 +117,7 @@ class OutlinesVllmHandler(BaseHandler):
         except Exception as e:
             result = f'[error.message(error="{e}")]'
             print(f"ERROR:\n{e}")
-            return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0,  "n_tool_calls": self.n_tool_calls, "tool_calls": [], "messages": ""}
+            return result, {"input_tokens": 0, "output_tokens": 0, "latency": 0,  "n_tool_calls": self.n_tool_calls, "tool_calls": tool_calls, "messages": messages if output_messages is None else output_messages}
 
         # Record info
         latency = time.time() - start
