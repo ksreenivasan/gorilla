@@ -94,15 +94,15 @@ if __name__ == "__main__":
 
     args = get_args()
     print(args)
-    print(
-        (
-            f"OS environment args".center(150, "=") + "\n"
-            f"MODEL_API_KEY: {os.getenv('MODEL_API_KEY')[:10] + '...' + os.getenv('MODEL_API_KEY')[-5:]}\n"
-            f"MODEL_ENDPOINT_URL: {os.getenv('MODEL_ENDPOINT_URL')}\n"
-            f"ENDPOINT_MODEL_NAME: {os.getenv('ENDPOINT_MODEL_NAME')}\n"
-            '='.center(150, "=")
-        )
-    )
+    # print(
+    #     (
+    #         f"OS environment args".center(150, "=") + "\n"
+    #         f"MODEL_API_KEY: {os.getenv('MODEL_API_KEY')[:10] + '...' + os.getenv('MODEL_API_KEY')[-5:]}\n"
+    #         f"MODEL_ENDPOINT_URL: {os.getenv('MODEL_ENDPOINT_URL')}\n"
+    #         f"ENDPOINT_MODEL_NAME: {os.getenv('ENDPOINT_MODEL_NAME')}\n"
+    #         '='.center(150, "=")
+    #     )
+    # )
 
     if args.DEBUGGER:
         import debugpy

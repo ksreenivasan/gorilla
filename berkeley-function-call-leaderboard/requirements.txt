@@ -9,3 +9,4 @@ anthropic
 openai
 numpy
 cohere~=5.2.5
+python-dotenv
