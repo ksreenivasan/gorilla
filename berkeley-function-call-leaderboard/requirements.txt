@@ -4,8 +4,9 @@ tree_sitter~=0.21.0
 torch 
 ray
 shortuuid
-mistralai
+mistralai==0.1.8
 anthropic
 openai
 numpy
 cohere~=5.2.5
+python-dotenv

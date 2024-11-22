@@ -18,6 +18,9 @@ def get_args():
     parser.add_argument("--max-tokens", type=int, default=1200)
     parser.add_argument("--num-gpus", default=1, type=int)
     parser.add_argument("--timeout", default=60, type=int)
+    # NOTE: Number of workers to use for parallel generation
+    parser.add_argument("--num-workers", default=1, type=int)
+    parser.add_argument("--DEBUGGER", default=False, action='store_true')  # flag that allows for debugging
 
     args = parser.parse_args()
     return args
@@ -50,13 +53,68 @@ def load_file(test_category):
         test_cate, files_to_open = list(test_categories.keys()), list(
             test_categories.values()
         )
+    elif test_category == "no-multiple":
+        no_multiple_cats = [cat for cat in test_categories.keys() if "multiple" not in cat]
+        test_cate,files_to_open = no_multiple_cats,[test_categories[cat] for cat in no_multiple_cats]
+    elif test_category == "simple_v0":
+        simple_cats = ["simple",
+                       "executable_simple",
+                       "java",
+                       "javascript",
+                       # "relevance", # too slow and FC gets 0 right now anyway
+                       ]
+        test_cate,files_to_open = simple_cats, [test_categories[cat] for cat in simple_cats]
+    elif test_category == "ast_only":
+        ast_cats = ["simple",
+                    "parallel_function",
+                    "multiple_function",
+                    "parallel_multiple_function",
+                    ]
+        test_cate,files_to_open = ast_cats, [test_categories[cat] for cat in ast_cats]
+    elif test_category == "ast_relevance":
+        ast_cats = ["simple",
+                    "parallel_function",
+                    "multiple_function",
+                    "parallel_multiple_function",
+                    "relevance",
+                    ]
+        test_cate,files_to_open = ast_cats, [test_categories[cat] for cat in ast_cats]
     else:
         test_cate, files_to_open = [test_category], [test_categories[test_category]]
     return test_cate, files_to_open
 
 
 if __name__ == "__main__":
+
+    ##############################
+    # helpful for debugging
+    from dotenv import load_dotenv
+    load_dotenv()
+
+
     args = get_args()
+    print(args)
+    # print(
+    #     (
+    #         f"OS environment args".center(150, "=") + "\n"
+    #         f"MODEL_API_KEY: {os.getenv('MODEL_API_KEY')[:10] + '...' + os.getenv('MODEL_API_KEY')[-5:]}\n"
+    #         f"MODEL_ENDPOINT_URL: {os.getenv('MODEL_ENDPOINT_URL')}\n"
+    #         f"ENDPOINT_MODEL_NAME: {os.getenv('ENDPOINT_MODEL_NAME')}\n"
+    #         '='.center(150, "=")
+    #     )
+    # )
+
+    if args.DEBUGGER:
+        import debugpy
+        # Allow other computers to attach to debugpy at this IP address and port.
+        debugpy.listen(("localhost", 5678))
+
+        print("Waiting for debugger attach...")
+        debugpy.wait_for_client()  # Pause the program until a remote debugger is attached.
+        print("Debugger attached.")
+
+    ##############################
+
     if USE_COHERE_OPTIMIZATION and "command-r-plus" in args.model:
         args.model = args.model + "-optimized"
     handler = build_handler(args.model, args.temperature, args.top_p, args.max_tokens)
@@ -91,9 +149,13 @@ if __name__ == "__main__":
                 ) as f:
                     for line in f:
                         num_existing_result += 1
-            for index, test_case in enumerate(tqdm(test_cases)):
+
+            # try to parallelize the generation
+            def inference_helper(params):
+                index = params['idx']
+                test_case = params['test_case']
                 if index < num_existing_result:
-                    continue
+                    return None
                 user_question, functions = test_case["question"], test_case["function"]
                 if type(functions) is dict or type(functions) is str:
                     functions = [functions]
@@ -107,4 +169,32 @@ if __name__ == "__main__":
                     "output_token_count": metadata["output_tokens"],
                     "latency": metadata["latency"],
                 }
-                handler.write(result_to_write, file_to_open)
+                return result_to_write
+
+            from concurrent.futures import ThreadPoolExecutor
+            # TODO: hacky way to get idxs in there.
+            generation_params = [{'test_case': test_case, 'idx': idx} for idx, test_case in enumerate(test_cases)]
+            # NOTE: I'm not being too careful about concurrency issues here. But seems to work well. Go Hogwild!
+            print('Starting parallel generation'.center(80, '='))
+            with ThreadPoolExecutor(max_workers=args.num_workers) as executor:
+                for result_to_write in tqdm(executor.map(inference_helper, generation_params), total=len(generation_params)):
+                    if result_to_write is not None:
+                        handler.write(result_to_write, file_to_open)
+
+            # for index, test_case in enumerate(tqdm(test_cases)):
+            #     if index < num_existing_result:
+            #         continue
+            #     user_question, functions = test_case["question"], test_case["function"]
+            #     if type(functions) is dict or type(functions) is str:
+            #         functions = [functions]
+            #     result, metadata = handler.inference(
+            #         user_question, functions, test_category
+            #     )
+            #     result_to_write = {
+            #         "idx": index,
+            #         "result": result,
+            #         "input_token_count": metadata["input_tokens"],
+            #         "output_token_count": metadata["output_tokens"],
+            #         "latency": metadata["latency"],
+            #     }
+            #     handler.write(result_to_write, file_to_open)

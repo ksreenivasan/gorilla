@@ -16,12 +16,18 @@ from model_handler.nexus_handler import NexusHandler
 from model_handler.oss_handler import OSSHandler
 from model_handler.cohere_handler import CohereHandler
 from model_handler.arctic_handler import ArcticHandler
+from model_handler.generic_vllm_handler import GenericVLLMHandler
+from model_handler.generic_oai_compatible_model_handler import GenericOAICompatibleModelHandler
+from model_handler.dummy_handler import DummyModelHandler
+from model_handler.generic_oai_proxy_handler import GenericOAIProxyHandler
 
 handler_map = {
     "gorilla-openfunctions-v0": GorillaHandler,
     "gorilla-openfunctions-v2": GorillaHandler,
     "gpt-4o-2024-05-13": OpenAIHandler,
     "gpt-4o-2024-05-13-FC": OpenAIHandler,
+    "gpt-4o-mini": OpenAIHandler,
+    "gpt-4o-mini-FC": OpenAIHandler,
     "gpt-4-turbo-2024-04-09-FC": OpenAIHandler,
     "gpt-4-turbo-2024-04-09": OpenAIHandler,
     "gpt-4-1106-preview-FC": OpenAIHandler,
@@ -63,6 +69,7 @@ handler_map = {
     "meetkai/functionary-small-v2.4-FC": FunctionaryHandler,
     "meetkai/functionary-medium-v2.4-FC": FunctionaryHandler,
     "databricks-dbrx-instruct": DatabricksHandler,
+    "databricks-dbrx-instruct-FC": DatabricksHandler,
     "NousResearch/Hermes-2-Pro-Mistral-7B": HermesHandler,
     "meta-llama/Meta-Llama-3-8B-Instruct": LlamaHandler,
     "meta-llama/Meta-Llama-3-70B-Instruct": LlamaHandler,
@@ -71,4 +78,12 @@ handler_map = {
     "command-r-plus-FC-optimized": CohereHandler,
     "command-r-plus-optimized": CohereHandler,
     "snowflake/arctic": ArcticHandler,
+    "generic-vllm-model": GenericVLLMHandler,
+    "generic-vllm-model-FC": GenericVLLMHandler,
+    "generic-oai-compatible-model": GenericOAICompatibleModelHandler,
+    "generic-oai-compatible-model-FC": GenericOAICompatibleModelHandler,
+    "generic-oai-proxy-handler":GenericOAIProxyHandler,
+    "generic-oai-proxy-handler-FC":GenericOAIProxyHandler,
+    "dummy-model-handler": DummyModelHandler,
+    "dummy-model-handler-FC": DummyModelHandler,
 }
